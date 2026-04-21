@@ -30,6 +30,7 @@ public class LabResult extends AbstractEntity<Long> {
     private List<Map<String, Object>> hematologyTests;
 
     // Fluid analysis tests stored as JSONB array of test items
+    // Each item: { id, name, value, unit, normalRange }
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "fluid_analysis", columnDefinition = "jsonb")
     private List<Map<String, Object>> fluidAnalysis;
