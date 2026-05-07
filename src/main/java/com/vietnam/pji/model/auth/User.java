@@ -1,6 +1,7 @@
 package com.vietnam.pji.model.auth;
 
 import java.io.Serializable;
+import java.time.Instant;
 import com.vietnam.pji.model.AbstractEntity;
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -48,6 +49,9 @@ public class User extends AbstractEntity<Long> implements Serializable {
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "status")
     private UserStatus status;
+
+    @Column(name = "last_login")
+    private Instant lastLogin;
 
     // relationships: ---
     @ManyToOne(fetch = FetchType.EAGER)

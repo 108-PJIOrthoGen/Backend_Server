@@ -18,7 +18,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.HandlerMapping;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -61,14 +60,16 @@ public class AuthorityIntercepter implements HandlerInterceptor {
                     throw new ForbiddenException("You don't have permission to access");
                 }
             }
-            // permissionKeys == null means user has no role → pass through (matches original behavior)
+            // permissionKeys == null means user has no role → pass through (matches
+            // original behavior)
         }
         return true;
     }
 
     /**
      * Load permissions from Redis cache, fallback to DB on miss.
-     * Returns null if user has no role (pass through), or a list of "METHOD:path" strings.
+     * Returns null if user has no role (pass through), or a list of "METHOD:path"
+     * strings.
      */
     private List<String> loadPermissions(String email) {
         // Try cache first
@@ -78,7 +79,8 @@ public class AuthorityIntercepter implements HandlerInterceptor {
                 if (NO_ROLE_SENTINEL.equals(cached)) {
                     return null;
                 }
-                return objectMapper.readValue(cached, new TypeReference<List<String>>() {});
+                return objectMapper.readValue(cached, new TypeReference<List<String>>() {
+                });
             }
         } catch (Exception e) {
             log.warn("Failed to read permission cache for {}, falling back to DB", email);

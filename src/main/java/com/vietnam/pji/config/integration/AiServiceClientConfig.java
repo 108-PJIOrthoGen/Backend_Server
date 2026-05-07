@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Duration;
@@ -20,12 +21,23 @@ public class AiServiceClientConfig {
     @Value("${ai.service.read-timeout:60000}")
     private long readTimeoutMs;
 
+    @Value("${ai.service.api-key:}")
+    private String aiServiceApiKey;
+
     @Bean(name = "aiRestTemplate")
     public RestTemplate aiRestTemplate(RestTemplateBuilder builder) {
-        return builder
+        RestTemplateBuilder configured = builder
                 .rootUri(aiServiceBaseUrl)
                 .connectTimeout(Duration.ofMillis(connectTimeoutMs))
-                .readTimeout(Duration.ofMillis(readTimeoutMs))
-                .build();
+                .readTimeout(Duration.ofMillis(readTimeoutMs));
+
+        if (aiServiceApiKey != null && !aiServiceApiKey.isBlank()) {
+            configured = configured.additionalInterceptors((request, body, execution) -> {
+                request.getHeaders().set(HttpHeaders.AUTHORIZATION, "Bearer " + aiServiceApiKey);
+                return execution.execute(request, body);
+            });
+        }
+
+        return configured.build();
     }
 }

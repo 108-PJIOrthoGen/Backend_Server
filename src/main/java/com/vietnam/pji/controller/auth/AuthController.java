@@ -1,11 +1,14 @@
 package com.vietnam.pji.controller.auth;
 
+import com.vietnam.pji.dto.request.ForgotPasswordRequestDTO;
 import com.vietnam.pji.dto.request.LoginDTO;
+import com.vietnam.pji.dto.request.ResetPasswordRequestDTO;
 import com.vietnam.pji.dto.response.ResLoginDTO;
 import com.vietnam.pji.dto.response.ResponseData;
 import com.vietnam.pji.exception.InvalidDataException;
 import com.vietnam.pji.exception.ResourceNotFoundException;
 import com.vietnam.pji.model.auth.User;
+import com.vietnam.pji.services.PasswordRecoveryService;
 import com.vietnam.pji.services.RedisService;
 import com.vietnam.pji.services.UserService;
 import com.vietnam.pji.utils.SecurityUtils;
@@ -41,6 +44,7 @@ public class AuthController {
     private final RedisService RedisService;
     private final AuthenticationManager authenticationManager;
     private final SecurityUtils securityUtils;
+    private final PasswordRecoveryService passwordRecoveryService;
 
     @PostMapping("/auth/login")
     public ResponseEntity<ResponseData<ResLoginDTO>> login(@Valid @RequestBody LoginDTO loginData) {
@@ -64,6 +68,7 @@ public class AuthController {
         String refresh_token = this.securityUtils.generateRefreshToken(loginData.getUsername(), resLoginDTO);
         this.RedisService.saveRefreshToken(loginData.getUsername(), refresh_token, refreshTokenExpire);
         this.userService.saveRefreshToken(refresh_token, loginData.getUsername());
+        this.userService.updateLastLogin(loginData.getUsername());
 
         ResponseCookie resCookies = ResponseCookie
                 .from("refresh-token", refresh_token)
@@ -76,6 +81,20 @@ public class AuthController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, resCookies.toString())
                 .body(new ResponseData<>(HttpStatus.OK.value(), "Login successful", resLoginDTO));
+    }
+
+    @PostMapping("/auth/forgot-password")
+    public ResponseEntity<ResponseData<Void>> forgotPassword(@Valid @RequestBody ForgotPasswordRequestDTO data) {
+        passwordRecoveryService.requestOtp(data.getEmail());
+        return ResponseEntity.ok(new ResponseData<>(
+                HttpStatus.OK.value(),
+                "Nếu email tồn tại trong hệ thống, mã OTP đã được gửi."));
+    }
+
+    @PostMapping("/auth/reset-password")
+    public ResponseEntity<ResponseData<Void>> resetPassword(@Valid @RequestBody ResetPasswordRequestDTO data) {
+        passwordRecoveryService.resetPassword(data.getEmail(), data.getOtp(), data.getNewPassword());
+        return ResponseEntity.ok(new ResponseData<>(HttpStatus.OK.value(), "Đặt lại mật khẩu thành công."));
     }
 
     @GetMapping("/auth/account")
@@ -133,6 +152,7 @@ public class AuthController {
         String refresh_token = this.securityUtils.generateRefreshToken(email, resLoginDTO);
         this.RedisService.saveRefreshToken(email, refresh_token, refreshTokenExpire);
         this.userService.saveRefreshToken(refresh_token, email);
+        this.userService.updateLastLogin(email);
 
         ResponseCookie resCookies = ResponseCookie
                 .from("refresh-token", refresh_token)

@@ -36,7 +36,6 @@ public class UserRequestDTO {
 
     private String avatar;
 
-    @NotBlank(message = "department must be not blank")
     private String password;
 
     @EnumPattern(name = "status", regexp = "ACTIVE|INACTIVE|NONE")

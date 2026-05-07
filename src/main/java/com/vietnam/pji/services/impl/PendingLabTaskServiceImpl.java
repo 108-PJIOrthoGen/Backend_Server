@@ -147,10 +147,23 @@ public class PendingLabTaskServiceImpl implements PendingLabTaskService {
             String importance = (String) item.get("importance");
             String message = (String) item.get("message");
 
-            // Skip if a PENDING task already exists for this episode+field
             Optional<PendingLabTask> existing = pendingLabTaskRepository
                     .findByEpisodeIdAndFieldAndStatus(episodeId, field, PendingLabTaskStatus.PENDING);
-            if (existing.isPresent()) continue;
+            if (existing.isPresent()) {
+                if (userId != null) {
+                    PendingLabTask task = existing.get();
+                    // Async worker can create unassigned tasks before the user clicks save.
+                    // Claim those tasks so they show up in the current user's drawer.
+                    if (task.getAssignedToUserId() == null) {
+                        task.setAssignedToUserId(userId);
+                    }
+                    if (task.getCreatedFromRunId() == null) {
+                        task.setCreatedFromRunId(runId);
+                    }
+                    pendingLabTaskRepository.save(task);
+                }
+                continue;
+            }
 
             PendingLabTask task = PendingLabTask.builder()
                     .episode(episode)

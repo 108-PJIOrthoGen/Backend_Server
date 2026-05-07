@@ -11,7 +11,10 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
+
+import com.vietnam.pji.security.ratelimit.RateLimitFilter;
 
 @Configuration
 @EnableMethodSecurity(securedEnabled = true)
@@ -30,11 +33,14 @@ public class WebSecurityConfiguration {
         }
 
         @Bean
-        public SecurityFilterChain filterChain(HttpSecurity http, AuthEntryPointConfig authEntryPointConfig)
+        public SecurityFilterChain filterChain(HttpSecurity http,
+                                               AuthEntryPointConfig authEntryPointConfig,
+                                               RateLimitFilter rateLimitFilter)
                         throws Exception {
                 String[] whileList = {
                                 "/", "/api/v1/", "/ws/**",
                                 "/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/register",
+                                "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password",
                                 "/storage/**",
                                 "/actuator/health",
                                 "/actuator/prometheus",
@@ -55,7 +61,8 @@ public class WebSecurityConfiguration {
 
                                 .formLogin(AbstractHttpConfigurer::disable)
                                 .sessionManagement(session -> session
-                                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+                                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                                .addFilterAfter(rateLimitFilter, BearerTokenAuthenticationFilter.class);
                 return http.build();
         }
 }

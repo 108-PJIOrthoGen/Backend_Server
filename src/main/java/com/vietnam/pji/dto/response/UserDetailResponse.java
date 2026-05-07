@@ -28,6 +28,7 @@ public class UserDetailResponse implements Serializable {
     private String department;
 
     private UserStatus status;
+    private Instant lastLogin;
     private Instant updatedAt;
     private Instant createdAt;
 

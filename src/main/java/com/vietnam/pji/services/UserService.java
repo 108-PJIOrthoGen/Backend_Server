@@ -25,4 +25,6 @@ public interface UserService {
     User fetchWithTokenAndEmail(String token, String email);
 
     void saveRefreshToken(String token, String email);
+
+    void updateLastLogin(String email);
 }

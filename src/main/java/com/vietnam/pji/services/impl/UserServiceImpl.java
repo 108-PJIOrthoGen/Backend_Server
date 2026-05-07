@@ -19,6 +19,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -37,6 +38,9 @@ public class UserServiceImpl implements UserService {
         if (userRepository.existsByEmail(data.getEmail())) {
             throw new InvalidDataException("User with this email already exists.");
         }
+        if (data.getPassword() == null || data.getPassword().isBlank()) {
+            throw new InvalidDataException("Password must not be blank");
+        }
         User user = userMapper.toEntity(data);
         if (data.getRole().getId() != null) {
             Role role = roleRepository.findById(data.getRole().getId()).orElse(null);
@@ -50,10 +54,14 @@ public class UserServiceImpl implements UserService {
     public UserDetailResponse update(UserRequestDTO data) {
         User user = userRepository.findById(data.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        String incomingPassword = data.getPassword();
         userMapper.update(data, user);
         if (data.getRole().getId() != null) {
             Role role = roleRepository.findById(data.getRole().getId()).orElse(null);
             user.setRole(role);
+        }
+        if (incomingPassword != null && !incomingPassword.isBlank()) {
+            user.setPassword(passwordEncoder.encode(incomingPassword));
         }
         UserDetailResponse response = userMapper.toUserDetailResponse(userRepository.save(user));
         redisService.evictUserPermissions(user.getEmail());
@@ -109,6 +117,15 @@ public class UserServiceImpl implements UserService {
         User user = handleGetUserByUsername(email);
         if (user != null) {
             user.setRefreshToken(token);
+            userRepository.save(user);
+        }
+    }
+
+    @Override
+    public void updateLastLogin(String email) {
+        User user = handleGetUserByUsername(email);
+        if (user != null) {
+            user.setLastLogin(Instant.now());
             userRepository.save(user);
         }
     }
