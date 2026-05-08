@@ -18,16 +18,16 @@ spring:
   application:
     name: pji
   mail:
-    host: ${MAIL_HOST:localhost}
-    port: ${MAIL_PORT:1025}
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
+    host: smtp.gmail.com
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:hieuxitsuki05@gmail.com}
+    password: ${MAIL_PASSWORD:ejdvrfwylicuhvda}
     properties:
       mail:
         smtp:
-          auth: ${MAIL_SMTP_AUTH:false}
+          auth: true
           starttls:
-            enable: ${MAIL_SMTP_STARTTLS_ENABLE:false}
+            enable: true
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -41,6 +41,7 @@ spring:
           max-idle: 8       # Số idle connection tối đa
           min-idle: 0       # Số idle connection tối thiểu
           max-wait: -1ms    # Thời gian chờ tối đa
+  
   servlet:
     multipart:
       max-file-size: 1000MB
@@ -76,7 +77,7 @@ app:
   password-recovery:
     otp-ttl-seconds: ${PASSWORD_RECOVERY_OTP_TTL_SECONDS:300}
     max-attempts: ${PASSWORD_RECOVERY_MAX_ATTEMPTS:5}
-    mail-from: ${PASSWORD_RECOVERY_MAIL_FROM:no-reply@pji.local}
+    mail-from: ${PASSWORD_RECOVERY_MAIL_FROM:hieuxitsuki05@gmail.com}
 api:
   prefix: /api/v1
   messages:
