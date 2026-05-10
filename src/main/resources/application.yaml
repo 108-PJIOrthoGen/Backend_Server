@@ -18,7 +18,7 @@ spring:
   application:
     name: pji
   mail:
-    host: smtp.gmail.com
+    host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
     username: ${MAIL_USERNAME:hieuxitsuki05@gmail.com}
     password: ${MAIL_PASSWORD:ejdvrfwylicuhvda}
@@ -55,9 +55,9 @@ spring:
     baseline-version: 0
 integration:
   minio:
-    access-key: admin
-    secret-key: admin2026
-    url: http://localhost:9000
+    access-key: ${INTEGRATION_MINIO_ACCESS_KEY:admin}
+    secret-key: ${INTEGRATION_MINIO_SECRET_KEY:admin2026}
+    url: ${INTEGRATION_MINIO_URL:http://localhost:9000}
 secure:
   cookie:
     secure: ${COOKIE_SECURE:false}

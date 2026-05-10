@@ -19,6 +19,8 @@ public class RedisCacheConfig {
     private String redisHost;
     @Value("${spring.data.redis.port}")
     private int redisPort;
+    @Value("${spring.data.redis.password:}")
+    private String redisPassword;
 
     @Bean
     public JedisConnectionFactory jedisConnectionFactory() {
@@ -26,6 +28,9 @@ public class RedisCacheConfig {
         RedisStandaloneConfiguration config = new RedisStandaloneConfiguration();
         config.setHostName(redisHost);
         config.setPort(redisPort);
+        if (redisPassword != null && !redisPassword.isEmpty()) {
+            config.setPassword(redisPassword);
+        }
         return new JedisConnectionFactory(config);
     }
 
