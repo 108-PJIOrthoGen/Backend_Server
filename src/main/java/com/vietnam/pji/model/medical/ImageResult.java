@@ -38,6 +38,14 @@ public class ImageResult implements Serializable {
     @Column(name = "file_metadata", columnDefinition = "jsonb")
     private String fileMetadata;
 
+    /** S3/MinIO bucket the original file lives in. Used to regenerate presigned URLs at read time. */
+    @Column(name = "bucket", length = 200)
+    private String bucket;
+
+    /** S3/MinIO object key. Used to regenerate presigned URLs at read time. */
+    @Column(name = "object_key", length = 500)
+    private String objectKey;
+
     @CreationTimestamp
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_at")

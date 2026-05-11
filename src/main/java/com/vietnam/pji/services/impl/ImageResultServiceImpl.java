@@ -1,6 +1,7 @@
 package com.vietnam.pji.services.impl;
 
 import com.vietnam.pji.dto.request.ImageResultRequestDTO;
+import com.vietnam.pji.dto.response.ImageResultResponseDTO;
 import com.vietnam.pji.dto.response.PaginationResultDTO;
 import com.vietnam.pji.exception.ResourceNotFoundException;
 import com.vietnam.pji.model.medical.ImageResult;
@@ -9,12 +10,15 @@ import com.vietnam.pji.repository.EpisodeRepository;
 import com.vietnam.pji.repository.ImageResultRepository;
 import com.vietnam.pji.services.ImageResultService;
 import com.vietnam.pji.services.RedisService;
+import com.vietnam.pji.utils.MinioChannel;
 import com.vietnam.pji.utils.mapper.ImageResultMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -24,32 +28,34 @@ public class ImageResultServiceImpl implements ImageResultService {
     private final EpisodeRepository episodeRepository;
     private final ImageResultMapper imageResultMapper;
     private final RedisService redisService;
+    private final MinioChannel minioChannel;
 
     @Override
-    public ImageResult create(ImageResultRequestDTO data) {
+    public ImageResultResponseDTO create(ImageResultRequestDTO data) {
         PjiEpisode episode = episodeRepository.findById(data.getEpisodeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Episode not found"));
         ImageResult imageResult = imageResultMapper.toEntity(data);
         imageResult.setEpisode(episode);
         ImageResult saved = imageResultRepository.save(imageResult);
         redisService.evictSnapshotCache(data.getEpisodeId());
-        return saved;
+        return toResponseWithFreshUrl(saved);
     }
 
     @Override
-    public ImageResult update(Long id, ImageResultRequestDTO data) {
+    public ImageResultResponseDTO update(Long id, ImageResultRequestDTO data) {
         ImageResult imageResult = imageResultRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Image result not found"));
         imageResultMapper.update(data, imageResult);
         ImageResult saved = imageResultRepository.save(imageResult);
         redisService.evictSnapshotCache(imageResult.getEpisode().getId());
-        return saved;
+        return toResponseWithFreshUrl(saved);
     }
 
     @Override
-    public ImageResult getById(Long id) {
-        return imageResultRepository.findById(id)
+    public ImageResultResponseDTO getById(Long id) {
+        ImageResult entity = imageResultRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Image result not found"));
+        return toResponseWithFreshUrl(entity);
     }
 
     @Override
@@ -74,9 +80,25 @@ public class ImageResultServiceImpl implements ImageResultService {
         meta.setPages(page.getTotalPages());
         meta.setTotal(page.getTotalElements());
 
+        List<ImageResultResponseDTO> items = page.getContent().stream()
+                .map(this::toResponseWithFreshUrl)
+                .toList();
+
         PaginationResultDTO result = new PaginationResultDTO();
         result.setMeta(meta);
-        result.setResult(page.getContent());
+        result.setResult(items);
         return result;
+    }
+
+    /**
+     * Map entity to response DTO and stamp a fresh presigned URL.
+     * Falls back to null URL when bucket/objectKey aren't set yet (legacy rows).
+     */
+    private ImageResultResponseDTO toResponseWithFreshUrl(ImageResult entity) {
+        ImageResultResponseDTO dto = imageResultMapper.toResponse(entity);
+        if (entity.getBucket() != null && entity.getObjectKey() != null) {
+            dto.setUrl(minioChannel.presignedGetUrl(entity.getBucket(), entity.getObjectKey()));
+        }
+        return dto;
     }
 }

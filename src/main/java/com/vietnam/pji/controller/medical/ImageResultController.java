@@ -1,9 +1,9 @@
 package com.vietnam.pji.controller.medical;
 
 import com.vietnam.pji.dto.request.ImageResultRequestDTO;
+import com.vietnam.pji.dto.response.ImageResultResponseDTO;
 import com.vietnam.pji.dto.response.PaginationResultDTO;
 import com.vietnam.pji.dto.response.ResponseData;
-import com.vietnam.pji.model.medical.ImageResult;
 import com.vietnam.pji.services.ImageResultService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -24,20 +24,20 @@ public class ImageResultController {
 
     @PostMapping("/image-results")
     @ResponseStatus(HttpStatus.CREATED)
-    public ResponseData<ImageResult> createImageResult(@Valid @RequestBody ImageResultRequestDTO request) {
+    public ResponseData<ImageResultResponseDTO> createImageResult(@Valid @RequestBody ImageResultRequestDTO request) {
         return new ResponseData<>(HttpStatus.CREATED.value(), "Image result created successfully",
                 imageResultService.create(request));
     }
 
     @PutMapping("/image-results/{id}")
-    public ResponseData<ImageResult> updateImageResult(
+    public ResponseData<ImageResultResponseDTO> updateImageResult(
             @PathVariable Long id, @Valid @RequestBody ImageResultRequestDTO request) {
         return new ResponseData<>(HttpStatus.OK.value(), "Image result updated successfully",
                 imageResultService.update(id, request));
     }
 
     @GetMapping("/image-results/{id}")
-    public ResponseData<ImageResult> getImageResult(@PathVariable Long id) {
+    public ResponseData<ImageResultResponseDTO> getImageResult(@PathVariable Long id) {
         return new ResponseData<>(HttpStatus.OK.value(), "Fetch image result successfully",
                 imageResultService.getById(id));
     }

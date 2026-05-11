@@ -57,7 +57,11 @@ integration:
   minio:
     access-key: ${INTEGRATION_MINIO_ACCESS_KEY:admin}
     secret-key: ${INTEGRATION_MINIO_SECRET_KEY:admin2026}
+    # Internal endpoint backend uses for put/get/delete
     url: ${INTEGRATION_MINIO_URL:http://localhost:9000}
+    # Public endpoint used to sign URLs that browsers will fetch. Falls back to `url` if unset.
+    public-url: ${INTEGRATION_MINIO_PUBLIC_URL:${INTEGRATION_MINIO_URL:http://localhost:9000}}
+    presigned-expiry-minutes: ${INTEGRATION_MINIO_PRESIGNED_EXPIRY_MINUTES:60}
 secure:
   cookie:
     secure: ${COOKIE_SECURE:false}

@@ -42,8 +42,12 @@ public class MinioController {
         }
         // handle create folder (Option)
         this.minioChannel.initBucket(folder);
-        String fileUpload = this.minioChannel.upload(file, folder);
-        ResFileDTO result = new ResFileDTO(fileUpload, Instant.now());
+        var uploaded = this.minioChannel.uploadObject(file, folder);
+        ResFileDTO result = new ResFileDTO(
+                uploaded.presignedUrl(),
+                Instant.now(),
+                uploaded.bucket(),
+                uploaded.objectKey());
 
         return ResponseEntity.ok().body(result);
     }
