@@ -11,6 +11,7 @@ import com.vietnam.pji.services.ClinicalRecordService;
 import com.vietnam.pji.services.RedisService;
 import com.vietnam.pji.utils.mapper.ClinicalRecordMapper;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.Hibernate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,7 @@ public class ClinicalRecordServiceImpl implements ClinicalRecordService {
     private final RedisService redisService;
 
     @Override
+    @Transactional
     public ClinicalRecord create(ClinicalRecordRequestDTO data) {
         PjiEpisode episode = episodeRepository.findById(data.getEpisodeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Episode not found"));
@@ -33,23 +35,32 @@ public class ClinicalRecordServiceImpl implements ClinicalRecordService {
         record.setEpisode(episode);
         ClinicalRecord saved = clinicalRecordRepository.save(record);
         redisService.evictSnapshotCache(data.getEpisodeId());
+        Hibernate.initialize(saved.getEpisode());
+        Hibernate.initialize(saved.getEpisode().getPatient());
         return saved;
     }
 
     @Override
+    @Transactional
     public ClinicalRecord update(Long id, ClinicalRecordRequestDTO data) {
         ClinicalRecord record = clinicalRecordRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Clinical record not found"));
         clinicalRecordMapper.update(data, record);
         ClinicalRecord saved = clinicalRecordRepository.save(record);
         redisService.evictSnapshotCache(record.getEpisode().getId());
+        Hibernate.initialize(saved.getEpisode());
+        Hibernate.initialize(saved.getEpisode().getPatient());
         return saved;
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ClinicalRecord getById(Long id) {
-        return clinicalRecordRepository.findById(id)
+        ClinicalRecord record = clinicalRecordRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Clinical record not found"));
+        Hibernate.initialize(record.getEpisode());
+        Hibernate.initialize(record.getEpisode().getPatient());
+        return record;
     }
 
     @Override
@@ -63,11 +74,16 @@ public class ClinicalRecordServiceImpl implements ClinicalRecordService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PaginationResultDTO getByEpisode(Long episodeId, Pageable pageable) {
         if (!episodeRepository.existsById(episodeId)) {
             throw new ResourceNotFoundException("Episode not found");
         }
         Page<ClinicalRecord> page = clinicalRecordRepository.findByEpisodeId(episodeId, pageable);
+        page.getContent().forEach(r -> {
+            Hibernate.initialize(r.getEpisode());
+            Hibernate.initialize(r.getEpisode().getPatient());
+        });
         PaginationResultDTO.Meta meta = new PaginationResultDTO.Meta();
         meta.setPage(page.getNumber() + 1);
         meta.setPageSize(page.getSize());

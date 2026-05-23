@@ -11,6 +11,7 @@ import com.vietnam.pji.services.CultureResultService;
 import com.vietnam.pji.services.RedisService;
 import com.vietnam.pji.utils.mapper.CultureResultMapper;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.Hibernate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,7 @@ public class CultureResultServiceImpl implements CultureResultService {
     private final RedisService redisService;
 
     @Override
+    @Transactional
     public CultureResult create(CultureResultRequestDTO data) {
         PjiEpisode episode = episodeRepository.findById(data.getEpisodeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Episode not found"));
@@ -33,23 +35,32 @@ public class CultureResultServiceImpl implements CultureResultService {
         cultureResult.setEpisode(episode);
         CultureResult saved = cultureResultRepository.save(cultureResult);
         redisService.evictSnapshotCache(data.getEpisodeId());
+        Hibernate.initialize(saved.getEpisode());
+        Hibernate.initialize(saved.getEpisode().getPatient());
         return saved;
     }
 
     @Override
+    @Transactional
     public CultureResult update(Long id, CultureResultRequestDTO data) {
         CultureResult cultureResult = cultureResultRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Culture result not found"));
         cultureResultMapper.update(data, cultureResult);
         CultureResult saved = cultureResultRepository.save(cultureResult);
         redisService.evictSnapshotCache(cultureResult.getEpisode().getId());
+        Hibernate.initialize(saved.getEpisode());
+        Hibernate.initialize(saved.getEpisode().getPatient());
         return saved;
     }
 
     @Override
+    @Transactional(readOnly = true)
     public CultureResult getById(Long id) {
-        return cultureResultRepository.findById(id)
+        CultureResult cultureResult = cultureResultRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Culture result not found"));
+        Hibernate.initialize(cultureResult.getEpisode());
+        Hibernate.initialize(cultureResult.getEpisode().getPatient());
+        return cultureResult;
     }
 
     @Override
@@ -63,11 +74,16 @@ public class CultureResultServiceImpl implements CultureResultService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PaginationResultDTO getByEpisode(Long episodeId, Pageable pageable) {
         if (!episodeRepository.existsById(episodeId)) {
             throw new ResourceNotFoundException("Episode not found");
         }
         Page<CultureResult> page = cultureResultRepository.findByEpisodeId(episodeId, pageable);
+        page.getContent().forEach(r -> {
+            Hibernate.initialize(r.getEpisode());
+            Hibernate.initialize(r.getEpisode().getPatient());
+        });
         PaginationResultDTO.Meta meta = new PaginationResultDTO.Meta();
         meta.setPage(page.getNumber() + 1);
         meta.setPageSize(page.getSize());

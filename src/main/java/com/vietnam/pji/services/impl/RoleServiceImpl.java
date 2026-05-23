@@ -5,17 +5,20 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import com.vietnam.pji.dto.response.PaginationResultDTO;
+import com.vietnam.pji.dto.response.RoleDetailDTO;
 import com.vietnam.pji.model.auth.Permission;
 import com.vietnam.pji.model.auth.Role;
 import com.vietnam.pji.repository.PermissionRepository;
 import com.vietnam.pji.repository.RoleRepository;
 import com.vietnam.pji.services.RedisService;
 import com.vietnam.pji.services.RoleService;
+import com.vietnam.pji.utils.mapper.RoleMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -23,10 +26,12 @@ public class RoleServiceImpl implements RoleService {
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
     private final RedisService redisService;
+    private final RoleMapper roleMapper;
 
 
     @Override
-    public Role create(Role data) {
+    @Transactional
+    public RoleDetailDTO create(Role data) {
         List<Long> pers = data.getPermissions().stream().map(item -> item.getId())
                 .collect(Collectors.toList());
         if (pers.isEmpty()) {
@@ -36,11 +41,12 @@ public class RoleServiceImpl implements RoleService {
         data.setPermissions(allPers);
         Role saved = this.roleRepository.save(data);
         redisService.evictAllUserPermissions();
-        return saved;
+        return roleMapper.toDetail(saved);
     }
 
     @Override
-    public Role update(Role data)  {
+    @Transactional
+    public RoleDetailDTO update(Role data)  {
         if (this.roleRepository.findById(data.getId()).isEmpty()) {
             throw new NoSuchElementException("Not found, check again?");
         } else {
@@ -54,19 +60,20 @@ public class RoleServiceImpl implements RoleService {
                 data.setCreatedAt(rOptional.get().getCreatedAt());
                 Role saved = this.roleRepository.save(data);
                 redisService.evictAllUserPermissions();
-                return saved;
+                return roleMapper.toDetail(saved);
             }
             return null;
         }
     }
 
     @Override
-    public Role fetchById(Long id)  {
+    @Transactional(readOnly = true)
+    public RoleDetailDTO fetchById(Long id)  {
         Optional<Role> check = this.roleRepository.findById(id);
         if (check.isEmpty()) {
             throw new NoSuchElementException("Data not found!");
         }
-        return check.get();
+        return roleMapper.toDetail(check.get());
     }
 
     @Override
@@ -79,6 +86,7 @@ public class RoleServiceImpl implements RoleService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PaginationResultDTO fetchAll(Specification<Role> spec, Pageable pageable) {
         Page<Role> page = this.roleRepository.findAll(spec, pageable);
 
@@ -91,7 +99,7 @@ public class RoleServiceImpl implements RoleService {
         mt.setTotal(page.getTotalElements());
 
         rs.setMeta(mt);
-        rs.setResult(page.getContent());
+        rs.setResult(roleMapper.toDetails(page.getContent()));
         return rs;
     }
 }

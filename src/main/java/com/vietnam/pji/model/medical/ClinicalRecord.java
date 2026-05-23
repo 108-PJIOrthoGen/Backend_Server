@@ -20,7 +20,7 @@ import org.hibernate.type.SqlTypes;
 @AllArgsConstructor
 @Entity
 @Table(name = "clinical_records")
-public class ClinicalRecord extends AbstractEntity<Long> implements Serializable {
+public class ClinicalRecord extends AbstractEntity<Long> {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "episode_id")

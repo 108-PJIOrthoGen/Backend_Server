@@ -7,7 +7,6 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import java.io.Serializable;
-import java.time.LocalDate;
 import java.util.Date;
 
 @Getter
@@ -38,7 +37,10 @@ public class ImageResult implements Serializable {
     @Column(name = "file_metadata", columnDefinition = "jsonb")
     private String fileMetadata;
 
-    /** S3/MinIO bucket the original file lives in. Used to regenerate presigned URLs at read time. */
+    /**
+     * S3/MinIO bucket the original file lives in. Used to regenerate presigned URLs
+     * at read time.
+     */
     @Column(name = "bucket", length = 200)
     private String bucket;
 

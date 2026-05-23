@@ -5,10 +5,13 @@ import com.vietnam.pji.model.AbstractEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.type.SqlTypes;
 import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.Year;
+import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
 
@@ -19,6 +22,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @Entity
 @Table(name = "patients")
+@SQLDelete(sql = "UPDATE patients SET deleted_at = NOW() WHERE id = ?")
+@SQLRestriction("deleted_at IS NULL")
 public class Patient extends AbstractEntity<Long> implements Serializable {
 
     @Column(name = "patient_code", length = 30)
@@ -65,6 +70,10 @@ public class Patient extends AbstractEntity<Long> implements Serializable {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "relative_info", columnDefinition = "jsonb")
     private Map<String, Object> relativeInfo;
+
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "deleted_at")
+    private Date deletedAt;
 
     @Override
     protected void handleBeforeCreate() {

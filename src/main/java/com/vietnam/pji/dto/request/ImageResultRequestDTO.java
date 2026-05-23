@@ -1,12 +1,8 @@
 package com.vietnam.pji.dto.request;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.format.annotation.DateTimeFormat;
-
-import java.time.LocalDate;
 
 @Getter
 @Setter
@@ -21,9 +17,15 @@ public class ImageResultRequestDTO {
 
     private String fileMetadata;
 
-    /** Stable MinIO bucket — captured at upload time. Persist instead of a presigned URL. */
+    /**
+     * Stable MinIO bucket — captured at upload time. Persist instead of a presigned
+     * URL.
+     */
     private String bucket;
 
-    /** Stable MinIO object key — captured at upload time. Persist instead of a presigned URL. */
+    /**
+     * Stable MinIO object key — captured at upload time. Persist instead of a
+     * presigned URL.
+     */
     private String objectKey;
 }

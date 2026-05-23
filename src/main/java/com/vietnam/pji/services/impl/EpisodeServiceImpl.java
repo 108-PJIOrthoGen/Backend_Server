@@ -10,10 +10,12 @@ import com.vietnam.pji.repository.PatientRepository;
 import com.vietnam.pji.services.EpisodeService;
 import com.vietnam.pji.utils.mapper.EpisodeMapper;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.Hibernate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +26,7 @@ public class EpisodeServiceImpl implements EpisodeService {
     private final EpisodeMapper episodeMapper;
 
     @Override
+    @Transactional
     public PjiEpisode create(EpisodeRequestDTO data) {
         Patient patient = patientRepository.findById(data.getPatientId())
                 .orElseThrow(() -> new ResourceNotFoundException("Patient not found"));
@@ -31,10 +34,13 @@ public class EpisodeServiceImpl implements EpisodeService {
         PjiEpisode episode = episodeMapper.toEntity(data);
         episode.setPatient(patient);
 
-        return episodeRepository.save(episode);
+        PjiEpisode saved = episodeRepository.save(episode);
+        Hibernate.initialize(saved.getPatient());
+        return saved;
     }
 
     @Override
+    @Transactional
     public PjiEpisode update(Long id, EpisodeRequestDTO data) {
         PjiEpisode episode = episodeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Episode not found"));
@@ -46,13 +52,18 @@ public class EpisodeServiceImpl implements EpisodeService {
         }
 
         episodeMapper.update(data, episode);
-        return episodeRepository.save(episode);
+        PjiEpisode saved = episodeRepository.save(episode);
+        Hibernate.initialize(saved.getPatient());
+        return saved;
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PjiEpisode getById(Long id) {
-        return episodeRepository.findById(id)
+        PjiEpisode episode = episodeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Episode not found"));
+        Hibernate.initialize(episode.getPatient());
+        return episode;
     }
 
     @Override
@@ -64,12 +75,14 @@ public class EpisodeServiceImpl implements EpisodeService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PaginationResultDTO getAll(Specification<PjiEpisode> spec, Pageable pageable) {
         Page<PjiEpisode> page = episodeRepository.findAll(spec, pageable);
         return buildPaginationResult(page);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PaginationResultDTO getByPatient(Long patientId, Pageable pageable) {
         if (!patientRepository.existsById(patientId)) {
             throw new ResourceNotFoundException("Patient not found");
@@ -79,6 +92,7 @@ public class EpisodeServiceImpl implements EpisodeService {
     }
 
     private PaginationResultDTO buildPaginationResult(Page<PjiEpisode> page) {
+        page.getContent().forEach(e -> Hibernate.initialize(e.getPatient()));
         PaginationResultDTO.Meta meta = new PaginationResultDTO.Meta();
         meta.setPage(page.getNumber() + 1);
         meta.setPageSize(page.getSize());

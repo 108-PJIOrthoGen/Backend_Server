@@ -11,6 +11,7 @@ import com.vietnam.pji.services.RedisService;
 import com.vietnam.pji.services.SurgeryService;
 import com.vietnam.pji.utils.mapper.SurgeryMapper;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.Hibernate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,7 @@ public class SurgeryServiceImpl implements SurgeryService {
     private final RedisService redisService;
 
     @Override
+    @Transactional
     public Surgery create(SurgeryRequestDTO data) {
         PjiEpisode episode = episodeRepository.findById(data.getEpisodeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Episode not found"));
@@ -33,23 +35,32 @@ public class SurgeryServiceImpl implements SurgeryService {
         surgery.setEpisode(episode);
         Surgery saved = surgeryRepository.save(surgery);
         redisService.evictSnapshotCache(data.getEpisodeId());
+        Hibernate.initialize(saved.getEpisode());
+        Hibernate.initialize(saved.getEpisode().getPatient());
         return saved;
     }
 
     @Override
+    @Transactional
     public Surgery update(Long id, SurgeryRequestDTO data) {
         Surgery surgery = surgeryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Surgery not found"));
         surgeryMapper.update(data, surgery);
         Surgery saved = surgeryRepository.save(surgery);
         redisService.evictSnapshotCache(surgery.getEpisode().getId());
+        Hibernate.initialize(saved.getEpisode());
+        Hibernate.initialize(saved.getEpisode().getPatient());
         return saved;
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Surgery getById(Long id) {
-        return surgeryRepository.findById(id)
+        Surgery surgery = surgeryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Surgery not found"));
+        Hibernate.initialize(surgery.getEpisode());
+        Hibernate.initialize(surgery.getEpisode().getPatient());
+        return surgery;
     }
 
     @Override
@@ -63,11 +74,16 @@ public class SurgeryServiceImpl implements SurgeryService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PaginationResultDTO getByEpisode(Long episodeId, Pageable pageable) {
         if (!episodeRepository.existsById(episodeId)) {
             throw new ResourceNotFoundException("Episode not found");
         }
         Page<Surgery> page = surgeryRepository.findByEpisodeId(episodeId, pageable);
+        page.getContent().forEach(s -> {
+            Hibernate.initialize(s.getEpisode());
+            Hibernate.initialize(s.getEpisode().getPatient());
+        });
         PaginationResultDTO.Meta meta = new PaginationResultDTO.Meta();
         meta.setPage(page.getNumber() + 1);
         meta.setPageSize(page.getSize());

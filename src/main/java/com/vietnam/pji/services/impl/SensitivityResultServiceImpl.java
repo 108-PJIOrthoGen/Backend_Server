@@ -11,6 +11,7 @@ import com.vietnam.pji.services.RedisService;
 import com.vietnam.pji.services.SensitivityResultService;
 import com.vietnam.pji.utils.mapper.SensitivityResultMapper;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.Hibernate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,7 @@ public class SensitivityResultServiceImpl implements SensitivityResultService {
     private final RedisService redisService;
 
     @Override
+    @Transactional
     public SensitivityResult create(SensitivityResultRequestDTO data) {
         CultureResult culture = cultureResultRepository.findById(data.getCultureId())
                 .orElseThrow(() -> new ResourceNotFoundException("Culture result not found"));
@@ -34,6 +36,9 @@ public class SensitivityResultServiceImpl implements SensitivityResultService {
         SensitivityResult saved = sensitivityResultRepository.save(result);
         // Evict snapshot: sensitivity → culture → episode
         redisService.evictSnapshotCache(culture.getEpisode().getId());
+        Hibernate.initialize(saved.getCulture());
+        Hibernate.initialize(saved.getCulture().getEpisode());
+        Hibernate.initialize(saved.getCulture().getEpisode().getPatient());
         return saved;
     }
 
@@ -50,13 +55,21 @@ public class SensitivityResultServiceImpl implements SensitivityResultService {
         if (culture != null) {
             redisService.evictSnapshotCache(culture.getEpisode().getId());
         }
+        Hibernate.initialize(saved.getCulture());
+        Hibernate.initialize(saved.getCulture().getEpisode());
+        Hibernate.initialize(saved.getCulture().getEpisode().getPatient());
         return saved;
     }
 
     @Override
+    @Transactional(readOnly = true)
     public SensitivityResult getById(Long id) {
-        return sensitivityResultRepository.findById(id)
+        SensitivityResult result = sensitivityResultRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Sensitivity result not found"));
+        Hibernate.initialize(result.getCulture());
+        Hibernate.initialize(result.getCulture().getEpisode());
+        Hibernate.initialize(result.getCulture().getEpisode().getPatient());
+        return result;
     }
 
     @Override
@@ -75,11 +88,17 @@ public class SensitivityResultServiceImpl implements SensitivityResultService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PaginationResultDTO getByCulture(Long cultureId, Pageable pageable) {
         if (!cultureResultRepository.existsById(cultureId)) {
             throw new ResourceNotFoundException("Culture result not found");
         }
         Page<SensitivityResult> page = sensitivityResultRepository.findByCultureId(cultureId, pageable);
+        page.getContent().forEach(r -> {
+            Hibernate.initialize(r.getCulture());
+            Hibernate.initialize(r.getCulture().getEpisode());
+            Hibernate.initialize(r.getCulture().getEpisode().getPatient());
+        });
         PaginationResultDTO.Meta meta = new PaginationResultDTO.Meta();
         meta.setPage(page.getNumber() + 1);
         meta.setPageSize(page.getSize());

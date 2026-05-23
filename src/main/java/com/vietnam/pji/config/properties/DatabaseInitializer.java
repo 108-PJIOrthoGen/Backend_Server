@@ -21,7 +21,7 @@ public class DatabaseInitializer implements CommandLineRunner {
         private final UserRepository userRepository;
         private final PasswordEncoder passwordEncoder;
 
-        @Value("${app.bootstrap-admin.enabled:false}")
+        @Value("${app.bootstrap-admin.enabled:true}")
         private boolean bootstrapAdminEnabled;
 
         @Value("${app.bootstrap-admin.email:admin@example.com}")
@@ -172,6 +172,51 @@ public class DatabaseInitializer implements CommandLineRunner {
                         arrResult.add(new Permission("Get users with pagination", "/api/v1/users", "GET", "USERS"));
 
                         arrResult.add(new Permission("Upload file", "/api/v1/files", "POST", "FILES"));
+
+                        arrResult.add(new Permission("Generate recommendation (sync)",
+                                        "/api/v1/episodes/{episodeId}/ai-recommendations/generate-sync", "POST",
+                                        "RAG"));
+                        arrResult.add(new Permission("Get recommendation runs by episode",
+                                        "/api/v1/episodes/{episodeId}/ai-recommendations/runs", "GET", "RAG"));
+                        arrResult.add(new Permission("Get recommendation run detail",
+                                        "/api/v1/ai-recommendations/runs/{runId}", "GET", "RAG"));
+                        arrResult.add(new Permission("Retry recommendation run",
+                                        "/api/v1/ai-recommendations/runs/{runId}/retry", "POST", "RAG"));
+                        arrResult.add(new Permission("Stream recommendation thought logs",
+                                        "/api/v1/ai-recommendations/runs/{runId}/stream", "GET", "RAG"));
+
+                        arrResult.add(new Permission("Create AI chat session",
+                                        "/api/v1/ai-chat/sessions", "POST", "AI_CHAT"));
+                        arrResult.add(new Permission("Send AI chat message",
+                                        "/api/v1/ai-chat/sessions/{sessionId}/messages", "POST", "AI_CHAT"));
+                        arrResult.add(new Permission("Get AI chat messages",
+                                        "/api/v1/ai-chat/sessions/{sessionId}/messages", "GET", "AI_CHAT"));
+                        arrResult.add(new Permission("Get AI chat sessions by episode",
+                                        "/api/v1/episodes/{episodeId}/ai-chat/sessions", "GET", "AI_CHAT"));
+
+                        arrResult.add(new Permission("Create doctor review",
+                                        "/api/v1/episodes/{episodeId}/doctor-reviews", "POST", "DOCTOR_REVIEWS"));
+                        arrResult.add(new Permission("Get doctor review by run",
+                                        "/api/v1/ai-recommendations/runs/{runId}/review", "GET", "DOCTOR_REVIEWS"));
+                        arrResult.add(new Permission("Get doctor reviews by episode",
+                                        "/api/v1/episodes/{episodeId}/doctor-reviews", "GET", "DOCTOR_REVIEWS"));
+
+                        arrResult.add(new Permission("Get my pending lab tasks",
+                                        "/api/v1/pending-lab-tasks/my", "GET", "PENDING_LAB_TASKS"));
+                        arrResult.add(new Permission("Get my pending lab task count",
+                                        "/api/v1/pending-lab-tasks/my/count", "GET", "PENDING_LAB_TASKS"));
+                        arrResult.add(new Permission("Dismiss pending lab task",
+                                        "/api/v1/pending-lab-tasks/{id}/dismiss", "POST", "PENDING_LAB_TASKS"));
+                        arrResult.add(new Permission("Quick-entry pending lab task",
+                                        "/api/v1/pending-lab-tasks/{id}/quick-entry", "POST", "PENDING_LAB_TASKS"));
+                        arrResult.add(new Permission("Create pending lab tasks from completeness",
+                                        "/api/v1/episodes/{episodeId}/pending-lab-tasks/from-completeness", "POST",
+                                        "PENDING_LAB_TASKS"));
+
+                        arrResult.add(new Permission("Create extract-images job",
+                                        "/api/v1/extract-images/jobs", "POST", "EXTRACT_IMAGES"));
+                        arrResult.add(new Permission("Get extract-images job",
+                                        "/api/v1/extract-images/jobs/{jobId}", "GET", "EXTRACT_IMAGES"));
 
                         this.permissionRepository.saveAll(arrResult);
                 }

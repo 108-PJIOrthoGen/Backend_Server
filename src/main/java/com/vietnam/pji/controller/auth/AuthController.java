@@ -12,6 +12,7 @@ import com.vietnam.pji.services.PasswordRecoveryService;
 import com.vietnam.pji.services.RedisService;
 import com.vietnam.pji.services.UserService;
 import com.vietnam.pji.utils.SecurityUtils;
+import com.vietnam.pji.utils.mapper.RoleMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -45,6 +46,7 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final SecurityUtils securityUtils;
     private final PasswordRecoveryService passwordRecoveryService;
+    private final RoleMapper roleMapper;
 
     @PostMapping("/auth/login")
     public ResponseEntity<ResponseData<ResLoginDTO>> login(@Valid @RequestBody LoginDTO loginData) {
@@ -60,7 +62,7 @@ public class AuthController {
                     realUser.getId(),
                     realUser.getFullName(),
                     realUser.getEmail(),
-                    realUser.getRole());
+                    roleMapper.toDetail(realUser.getRole()));
             resLoginDTO.setUser(userLog);
         }
         String access_token = this.securityUtils.generateAccessToken(authentication.getName(), resLoginDTO);
@@ -109,7 +111,7 @@ public class AuthController {
             userData.setId(userCreated.getId());
             userData.setEmail(userCreated.getEmail());
             userData.setName(userCreated.getFullName());
-            userData.setRole(userCreated.getRole());
+            userData.setRole(roleMapper.toDetail(userCreated.getRole()));
             info.setUser(userData);
         }
         return new ResponseData<>(HttpStatus.OK.value(), "Fetch account successfully", info);
@@ -144,7 +146,7 @@ public class AuthController {
                     realUser.getId(),
                     realUser.getEmail(),
                     realUser.getFullName(),
-                    realUser.getRole());
+                    roleMapper.toDetail(realUser.getRole()));
             resLoginDTO.setUser(userLog);
         }
         String access_token = this.securityUtils.generateAccessToken(email, resLoginDTO);

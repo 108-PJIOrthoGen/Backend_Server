@@ -1,120 +1,129 @@
+# =============================================================================
+# Base configuration — common across all profiles.
+# Profile files (application-{dev,prod,test}.yml) override what's environment-specific
+# =============================================================================
 spring:
-  rabbitmq:
-    host: ${RABBITMQ_HOST:localhost}
-    port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USERNAME:admin}
-    password: ${RABBITMQ_PASSWORD:admin2026}
-  datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/pji_dev}
-    username: user
-    password: 123456
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
   application:
     name: pji
-  mail:
-    host: ${MAIL_HOST:smtp.gmail.com}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:hieuxitsuki05@gmail.com}
-    password: ${MAIL_PASSWORD:ejdvrfwylicuhvda}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
+  profiles:
+    default: dev   # if nothing else is set, behave like dev
+
+  # ---------------- Data sources ----------------
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate   # schema is owned by Flyway, not Hibernate
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 0
+    validate-on-migrate: true
+
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
+      host: ${REDIS_HOST}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
-      database: 0           # Database number
+      database: 0
       timeout: 60000
       jedis:
         pool:
-          max-active: 8     # Số connection tối đa
-          max-idle: 8       # Số idle connection tối đa
-          min-idle: 0       # Số idle connection tối thiểu
-          max-wait: -1ms    # Thời gian chờ tối đa
-  
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME}
+    password: ${RABBITMQ_PASSWORD}
+
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS_ENABLE:true}
+
   servlet:
     multipart:
       max-file-size: 1000MB
       max-request-size: 1000MB
-  #flyway
-  # dẫn tới thư mục chứa các script Flyway
-  flyway:
-    locations: classpath:/db/migration,classpath:/dev/db/migration
-    #Phiên bản baseline sẽ = 1 và không thực hiện bất kỳ thay đổi nào trong DB
-    baseline-on-migrate: true
-    baseline-version: 0
+
+# ---------------- Server ----------------
+server:
+  port: ${SERVER_PORT:8085}
+
+# ---------------- Custom integration ----------------
 integration:
   minio:
-    access-key: ${INTEGRATION_MINIO_ACCESS_KEY:admin}
-    secret-key: ${INTEGRATION_MINIO_SECRET_KEY:admin2026}
-    # Internal endpoint backend uses for put/get/delete
-    url: ${INTEGRATION_MINIO_URL:http://localhost:9000}
-    # Public endpoint used to sign URLs that browsers will fetch. Falls back to `url` if unset.
-    public-url: ${INTEGRATION_MINIO_PUBLIC_URL:${INTEGRATION_MINIO_URL:http://localhost:9000}}
+    url: ${INTEGRATION_MINIO_URL}
+    public-url: ${INTEGRATION_MINIO_PUBLIC_URL:${INTEGRATION_MINIO_URL}}
+    access-key: ${INTEGRATION_MINIO_ACCESS_KEY}
+    secret-key: ${INTEGRATION_MINIO_SECRET_KEY}
     presigned-expiry-minutes: ${INTEGRATION_MINIO_PRESIGNED_EXPIRY_MINUTES:60}
+
+# ---------------- Security ----------------
 secure:
   cookie:
     secure: ${COOKIE_SECURE:false}
     same-site: ${COOKIE_SAME_SITE:Lax}
   jwt:
-    base64-secret: qoAEABDke07+AVLepXB4aCMtsT0wMAqR5x2VFyldsnx6e75YQkJH2UcZKTjEyoNgG71SBCXfq5N6NVZxWOfsHQ==
-    refresh-token-validity-in-seconds: 604800  # 7 days
-    access-token-validity-in-seconds: 3600     # 1 hour
+    base64-secret: ${JWT_BASE64_SECRET:qoAEABDke07AVLepXB4aCMtsT0wMAqR5x2VFyldsnx6e75YQkJH2UcZKTjEyoNgG71SBCXfq5N6NVZxWOfsHQ==}
+    refresh-token-validity-in-seconds: ${JWT_REFRESH_TTL_SECONDS:604800}   # 7 days
+    access-token-validity-in-seconds: ${JWT_ACCESS_TTL_SECONDS:3600}        # 1 hour
+
+# ---------------- Application-specific ----------------
 app:
   cors:
-    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:4173,http://localhost:5173}
+    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGINS}
   bootstrap-admin:
-    enabled: ${BOOTSTRAP_ADMIN_ENABLED:false}
+    enabled: ${BOOTSTRAP_ADMIN_ENABLED:true}
     email: ${BOOTSTRAP_ADMIN_EMAIL:admin@example.com}
-    password: ${BOOTSTRAP_ADMIN_PASSWORD:}
+    password: ${BOOTSTRAP_ADMIN_PASSWORD:123456}
     full-name: ${BOOTSTRAP_ADMIN_FULL_NAME:System Administrator}
   password-recovery:
     otp-ttl-seconds: ${PASSWORD_RECOVERY_OTP_TTL_SECONDS:300}
     max-attempts: ${PASSWORD_RECOVERY_MAX_ATTEMPTS:5}
-    mail-from: ${PASSWORD_RECOVERY_MAIL_FROM:hieuxitsuki05@gmail.com}
+    mail-from: ${PASSWORD_RECOVERY_MAIL_FROM:no-reply@localhost}
+
 api:
   prefix: /api/v1
   messages:
     basename: i18n/messages
     encoding: UTF-8
     default-locale: en
-springdoc:
-  api-docs:
-    enabled: true
-  swagger-ui:
-    enabled: true
-openapi:
-  service:
-    api-docs: api-service
-    serverUrl: http://localhost:${server.port}
-    serverName: Server Dev
-    title: API Document
-    version: 1.0.0
 
+# ---------------- External services ----------------
 ai:
   service:
-    base-url: ${AI_SERVICE_URL:http://localhost:8000}
+    base-url: ${AI_SERVICE_URL}
     connect-timeout: ${AI_SERVICE_CONNECT_TIMEOUT:3000}
     read-timeout: ${AI_SERVICE_READ_TIMEOUT:180000}
     api-key: ${AI_SERVICE_API_KEY:dev-shared-key-pji-2026}
 
-# Rate limiting — Bucket4j + Redis (Jedis) backend
-# Rules are matched in order; the first matching rule applies. Place the most
-# specific patterns first and a /api/v1/** catch-all last.
+extract-images:
+  base-url: ${EXTRACT_IMAGES_URL}
+  connect-timeout: ${EXTRACT_IMAGES_CONNECT_TIMEOUT:3000}
+  read-timeout: ${EXTRACT_IMAGES_READ_TIMEOUT:30000}
+
+# ---------------- Rate limiting ----------------
 rate-limit:
   enabled: ${RATE_LIMIT_ENABLED:true}
   rules:
-    # Auth — tight per-IP limit to deter brute-force on login/refresh
     - name: auth
       paths:
         - /api/v1/auth/login
@@ -125,7 +134,6 @@ rate-limit:
       refill-tokens: 5
       refill-period: 1m
       per-user: false
-    # Expensive AI calls (recommendation generation, chat) — moderate per-user
     - name: ai-expensive
       paths:
         - /api/v1/**/ai-recommendations/**
@@ -136,7 +144,6 @@ rate-limit:
       refill-tokens: 30
       refill-period: 1m
       per-user: true
-    # Catch-all generous default for the rest of the API
     - name: default
       paths:
         - /api/v1/**
@@ -145,15 +152,7 @@ rate-limit:
       refill-period: 1m
       per-user: true
 
-extract-images:
-  base-url: ${EXTRACT_IMAGES_URL:http://localhost:8002}
-  connect-timeout: ${EXTRACT_IMAGES_CONNECT_TIMEOUT:3000}
-  read-timeout: ${EXTRACT_IMAGES_READ_TIMEOUT:30000}
-
-server:
-  port: 8085
-
-# Actuator — expose health, metrics, prometheus endpoints
+# ---------------- Observability ----------------
 management:
   endpoints:
     web:
@@ -161,11 +160,26 @@ management:
         include: health,info,prometheus,metrics
   endpoint:
     health:
-      show-details: always
+      show-details: ${HEALTH_SHOW_DETAILS:never}
+  health:
+    mail:
+      enabled: ${HEALTH_MAIL_ENABLED:true}
   tracing:
     enabled: ${OTEL_TRACING_ENABLED:true}
     sampling:
-      probability: 1.0
+      probability: ${OTEL_TRACING_SAMPLING:1.0}
   otlp:
     tracing:
       endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
+    logging:
+      export:
+        enabled: false
+
+# ---------------- OpenAPI ----------------
+openapi:
+  service:
+    api-docs: api-service
+    serverUrl: ${OPENAPI_SERVER_URL:http://localhost:${server.port}}
+    serverName: ${OPENAPI_SERVER_NAME:Local Dev}
+    title: API Document
+    version: 1.0.0

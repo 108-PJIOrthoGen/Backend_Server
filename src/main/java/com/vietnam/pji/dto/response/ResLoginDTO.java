@@ -1,7 +1,6 @@
 package com.vietnam.pji.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.vietnam.pji.model.auth.Role;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -24,7 +23,7 @@ public class ResLoginDTO {
         private long id;
         private String name;
         private String email;
-        private Role role;
+        private RoleDetailDTO role;
     }
 
     @Getter

@@ -16,6 +16,7 @@ import com.vietnam.pji.services.AiServiceClient;
 import com.vietnam.pji.services.EpisodeSnapshotAssemblerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.Hibernate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -118,6 +119,7 @@ public class AiChatServiceImpl implements AiChatService {
         }
 
         Page<AiChatMessage> page = messageRepository.findBySessionIdOrderByCreatedAtAsc(sessionId, pageable);
+        page.getContent().forEach(m -> Hibernate.initialize(m.getSession()));
 
         PaginationResultDTO.Meta meta = new PaginationResultDTO.Meta();
         meta.setPage(page.getNumber() + 1);
@@ -139,6 +141,11 @@ public class AiChatServiceImpl implements AiChatService {
         }
 
         Page<AiChatSession> page = sessionRepository.findByEpisodeIdOrderByCreatedAtDesc(episodeId, pageable);
+        page.getContent().forEach(s -> {
+            Hibernate.initialize(s.getEpisode());
+            if (s.getRun() != null) Hibernate.initialize(s.getRun());
+            if (s.getCurrentItem() != null) Hibernate.initialize(s.getCurrentItem());
+        });
 
         PaginationResultDTO.Meta meta = new PaginationResultDTO.Meta();
         meta.setPage(page.getNumber() + 1);

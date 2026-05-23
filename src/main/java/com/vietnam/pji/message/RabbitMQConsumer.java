@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vietnam.pji.config.integration.RabbitMQConfig;
 import com.vietnam.pji.constant.*;
+import com.vietnam.pji.controller.agentic.AiRecommendationStreamController;
+import com.vietnam.pji.dto.response.RabbitMQProgressMessage;
 import com.vietnam.pji.dto.response.RabbitMQRecommendationResultMessage;
 import com.vietnam.pji.model.agentic.*;
 import com.vietnam.pji.repository.*;
@@ -32,6 +34,23 @@ public class RabbitMQConsumer {
     private final ObjectMapper objectMapper;
     private final PendingLabTaskService pendingLabTaskService;
     private final RedisService redisService;
+    private final AiRecommendationStreamController streamController;
+
+    /**
+     * Relay progress (thought-log) messages from the Python worker straight to
+     * the SSE stream for the matching runId. Nothing is persisted.
+     */
+    @RabbitListener(queues = RabbitMQConfig.RECOMMENDATION_PROGRESS_QUEUE)
+    public void handleRecommendationProgress(RabbitMQProgressMessage progress) {
+        if (progress == null || progress.getRunId() == null) {
+            log.debug("Dropping progress message without runId");
+            return;
+        }
+        log.debug("Progress runId={} stage={} message={}",
+                progress.getRunId(), progress.getStage(), progress.getMessage());
+        streamController.pushProgress(
+                progress.getRunId(), progress.getMessage(), progress.getStage());
+    }
 
     @RabbitListener(queues = RabbitMQConfig.RECOMMENDATION_RESULT_QUEUE)
     @Transactional
@@ -58,6 +77,7 @@ public class RabbitMQConsumer {
         // Idempotency: skip if already succeeded
         if (run.getStatus() == RunStatus.SUCCESS) {
             log.info("Run {} already SUCCESS, skipping duplicate result", run.getId());
+            streamController.closeRun(run.getId(), "SUCCESS");
             return;
         }
 
@@ -70,6 +90,7 @@ public class RabbitMQConsumer {
             run.setLatencyMs(result.getLatencyMs());
             runRepository.save(run);
             log.warn("AI processing failed for runId={}: {}", run.getId(), result.getErrorMessage());
+            streamController.closeRun(run.getId(), "FAILED");
             return;
         }
 
@@ -79,6 +100,7 @@ public class RabbitMQConsumer {
             run.setErrorMessage("AI response missing required items");
             runRepository.save(run);
             log.warn("AI result has no items for runId={}", run.getId());
+            streamController.closeRun(run.getId(), "FAILED");
             return;
         }
 
@@ -170,6 +192,8 @@ public class RabbitMQConsumer {
                 run.getId(),
                 result.getItems().size(),
                 result.getCitations() != null ? result.getCitations().size() : 0);
+
+        streamController.closeRun(run.getId(), "SUCCESS");
     }
 
     private ItemCategory parseCategory(String category) {

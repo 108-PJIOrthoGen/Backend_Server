@@ -25,6 +25,10 @@ public class RabbitMQConfig {
     public static final String RECOMMENDATION_RESULT_QUEUE = "pji.ai.recommendation.result.queue";
     public static final String ROUTING_KEY_RESULT = "ai.recommendation.result";
 
+    // --- Recommendation Progress (Python → Backend, real-time SSE relay) ---
+    public static final String RECOMMENDATION_PROGRESS_QUEUE = "pji.ai.recommendation.progress.queue";
+    public static final String ROUTING_KEY_PROGRESS = "ai.recommendation.progress";
+
     // --- Chat (Backend → Python) ---
     public static final String CHAT_QUEUE = "pji.ai.chat.queue";
     public static final String CHAT_RESULT_QUEUE = "pji.ai.chat.result.queue";
@@ -77,6 +81,22 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(recommendationResultQueue)
                 .to(aiExchange)
                 .with(ROUTING_KEY_RESULT);
+    }
+
+    // Progress queue — transient stream of "thought log" messages relayed over SSE.
+    // Not durable: progress logs are ephemeral and not worth replaying after a crash.
+    @Bean
+    public Queue recommendationProgressQueue() {
+        return QueueBuilder.nonDurable(RECOMMENDATION_PROGRESS_QUEUE)
+                .autoDelete()
+                .build();
+    }
+
+    @Bean
+    public Binding progressBinding(Queue recommendationProgressQueue, TopicExchange aiExchange) {
+        return BindingBuilder.bind(recommendationProgressQueue)
+                .to(aiExchange)
+                .with(ROUTING_KEY_PROGRESS);
     }
 
     // Chat queues & bindings

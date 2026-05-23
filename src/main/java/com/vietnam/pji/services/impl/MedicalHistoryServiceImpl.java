@@ -11,7 +11,9 @@ import com.vietnam.pji.services.MedicalHistoryService;
 import com.vietnam.pji.services.RedisService;
 import com.vietnam.pji.utils.mapper.MedicalHistoryMapper;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.Hibernate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +25,7 @@ public class MedicalHistoryServiceImpl implements MedicalHistoryService {
     private final RedisService redisService;
 
     @Override
+    @Transactional
     public MedicalHistory create(Long episodeId, MedicalHistoryRequestDTO data) {
         if (medicalHistoryRepository.existsByEpisodeId(episodeId)) {
             throw new InvalidDataException("Medical history already exists for this episode.");
@@ -34,22 +37,31 @@ public class MedicalHistoryServiceImpl implements MedicalHistoryService {
         history.setEpisode(episode);
         MedicalHistory saved = medicalHistoryRepository.save(history);
         redisService.evictSnapshotCache(episodeId);
+        Hibernate.initialize(saved.getEpisode());
+        Hibernate.initialize(saved.getEpisode().getPatient());
         return saved;
     }
 
     @Override
+    @Transactional
     public MedicalHistory update(Long episodeId, MedicalHistoryRequestDTO data) {
         MedicalHistory history = medicalHistoryRepository.findByEpisodeId(episodeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Medical history not found for this episode"));
         medicalHistoryMapper.update(data, history);
         MedicalHistory saved = medicalHistoryRepository.save(history);
         redisService.evictSnapshotCache(episodeId);
+        Hibernate.initialize(saved.getEpisode());
+        Hibernate.initialize(saved.getEpisode().getPatient());
         return saved;
     }
 
     @Override
+    @Transactional(readOnly = true)
     public MedicalHistory getByEpisodeId(Long episodeId) {
-        return medicalHistoryRepository.findByEpisodeId(episodeId)
+        MedicalHistory history = medicalHistoryRepository.findByEpisodeId(episodeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Medical history not found for this episode"));
+        Hibernate.initialize(history.getEpisode());
+        Hibernate.initialize(history.getEpisode().getPatient());
+        return history;
     }
 }

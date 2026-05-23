@@ -12,6 +12,7 @@ import com.vietnam.pji.services.PendingLabTaskService;
 import com.vietnam.pji.services.RedisService;
 import com.vietnam.pji.utils.mapper.LabResultMapper;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.Hibernate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,7 @@ public class LabResultServiceImpl implements LabResultService {
     private final RedisService redisService;
 
     @Override
+    @Transactional
     public LabResult create(LabResultRequestDTO data) {
         PjiEpisode episode = episodeRepository.findById(data.getEpisodeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Episode not found"));
@@ -40,10 +42,13 @@ public class LabResultServiceImpl implements LabResultService {
                 data.getHematologyTests(), data.getFluidAnalysis(), data.getBiochemicalData());
 
         redisService.evictSnapshotCache(data.getEpisodeId());
+        Hibernate.initialize(saved.getEpisode());
+        Hibernate.initialize(saved.getEpisode().getPatient());
         return saved;
     }
 
     @Override
+    @Transactional
     public LabResult update(Long id, LabResultRequestDTO data) {
         LabResult labResult = labResultRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Lab result not found"));
@@ -56,13 +61,19 @@ public class LabResultServiceImpl implements LabResultService {
                 data.getHematologyTests(), data.getFluidAnalysis(), data.getBiochemicalData());
 
         redisService.evictSnapshotCache(episodeId);
+        Hibernate.initialize(saved.getEpisode());
+        Hibernate.initialize(saved.getEpisode().getPatient());
         return saved;
     }
 
     @Override
+    @Transactional(readOnly = true)
     public LabResult getById(Long id) {
-        return labResultRepository.findById(id)
+        LabResult labResult = labResultRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Lab result not found"));
+        Hibernate.initialize(labResult.getEpisode());
+        Hibernate.initialize(labResult.getEpisode().getPatient());
+        return labResult;
     }
 
     @Override
@@ -76,11 +87,16 @@ public class LabResultServiceImpl implements LabResultService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PaginationResultDTO getByEpisode(Long episodeId, Pageable pageable) {
         if (!episodeRepository.existsById(episodeId)) {
             throw new ResourceNotFoundException("Episode not found");
         }
         Page<LabResult> page = labResultRepository.findByEpisodeId(episodeId, pageable);
+        page.getContent().forEach(r -> {
+            Hibernate.initialize(r.getEpisode());
+            Hibernate.initialize(r.getEpisode().getPatient());
+        });
         PaginationResultDTO.Meta meta = new PaginationResultDTO.Meta();
         meta.setPage(page.getNumber() + 1);
         meta.setPageSize(page.getSize());

@@ -16,6 +16,7 @@ import com.vietnam.pji.services.UserService;
 import com.vietnam.pji.utils.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.Hibernate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -59,7 +60,9 @@ public class DoctorRecommendationReviewServiceImpl implements DoctorRecommendati
 
         review.setModificationJson(request.getModificationJson());
 
-        return reviewRepository.save(review);
+        DoctorRecommendationReview saved = reviewRepository.save(review);
+        eagerInit(saved);
+        return saved;
     }
 
     private void validateReviewAccess(PjiEpisode episode, AiRecommendationRun run) {
@@ -106,12 +109,36 @@ public class DoctorRecommendationReviewServiceImpl implements DoctorRecommendati
     @Override
     @Transactional(readOnly = true)
     public DoctorRecommendationReview getReviewByRunId(Long runId) {
-        return reviewRepository.findByRunId(runId).orElse(null);
+        DoctorRecommendationReview review = reviewRepository.findByRunId(runId).orElse(null);
+        if (review != null) {
+            eagerInit(review);
+        }
+        return review;
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<DoctorRecommendationReview> getReviewsByEpisodeId(Long episodeId) {
-        return reviewRepository.findByEpisodeIdOrderByCreatedAtDesc(episodeId);
+        List<DoctorRecommendationReview> reviews = reviewRepository.findByEpisodeIdOrderByCreatedAtDesc(episodeId);
+        reviews.forEach(this::eagerInit);
+        return reviews;
+    }
+
+    private void eagerInit(DoctorRecommendationReview review) {
+        Hibernate.initialize(review.getEpisode());
+        if (review.getEpisode() != null) {
+            Hibernate.initialize(review.getEpisode().getPatient());
+        }
+        Hibernate.initialize(review.getRun());
+        if (review.getRun() != null) {
+            Hibernate.initialize(review.getRun().getEpisode());
+            if (review.getRun().getEpisode() != null) {
+                Hibernate.initialize(review.getRun().getEpisode().getPatient());
+            }
+            Hibernate.initialize(review.getRun().getSnapshot());
+            if (review.getRun().getSnapshot() != null) {
+                Hibernate.initialize(review.getRun().getSnapshot().getEpisode());
+            }
+        }
     }
 }

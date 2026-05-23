@@ -14,13 +14,17 @@ import com.vietnam.pji.model.medical.PjiEpisode;
 import com.vietnam.pji.repository.*;
 import com.vietnam.pji.dto.request.RabbitMQRecommendationMessage;
 import com.vietnam.pji.message.RabbitMQPublisher;
+import com.vietnam.pji.dto.request.PriorAcceptedDiagnosisDTO;
 import com.vietnam.pji.services.AiRecommendationService;
 import com.vietnam.pji.services.AiServiceClient;
 import com.vietnam.pji.services.EpisodeSnapshotAssemblerService;
 import com.vietnam.pji.services.EpisodeSnapshotAssemblerService.SnapshotBuildResult;
+import com.vietnam.pji.services.PriorAcceptedDiagnosisAssemblerService;
 import com.vietnam.pji.services.RedisService;
+import com.vietnam.pji.utils.mapper.AiRecommendationRunMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.Hibernate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -41,10 +45,12 @@ public class AiRecommendationServiceImpl implements AiRecommendationService {
     private final AiRecommendationItemRepository itemRepository;
     private final AiRagCitationRepository citationRepository;
     private final EpisodeSnapshotAssemblerService snapshotAssemblerService;
+    private final PriorAcceptedDiagnosisAssemblerService priorAcceptedDiagnosisAssemblerService;
     private final AiServiceClient aiServiceClient;
     private final RabbitMQPublisher rabbitMQPublisher;
     private final ObjectMapper objectMapper;
     private final RedisService redisService;
+    private final AiRecommendationRunMapper runMapper;
 
     @Override
     public AiRecommendationRunDetailDTO generateRecommendation(Long episodeId, TriggerType triggerType) {
@@ -60,6 +66,8 @@ public class AiRecommendationServiceImpl implements AiRecommendationService {
 
         // TX1: Build snapshot + create run
         SnapshotBuildResult buildResult = snapshotAssemblerService.buildSnapshot(episodeId);
+        List<PriorAcceptedDiagnosisDTO> priorDiagnoses =
+                priorAcceptedDiagnosisAssemblerService.assemble(episodeId);
 
         CaseClinicalSnapshot snapshot = createSnapshot(episode, buildResult);
         AiRecommendationRun run = createRun(episode, snapshot, triggerType);
@@ -75,6 +83,7 @@ public class AiRecommendationServiceImpl implements AiRecommendationService {
                     .episodeId(episodeId)
                     .snapshotId(snapshot.getId())
                     .snapshotDataJson(buildResult.getSnapshotDataJson())
+                    .priorAcceptedDiagnoses(priorDiagnoses)
                     .options(AiRecommendationGenerateRequestDTO.Options.builder().build())
                     .build();
 
@@ -103,6 +112,8 @@ public class AiRecommendationServiceImpl implements AiRecommendationService {
 
         // Build snapshot + create run (same as sync)
         SnapshotBuildResult buildResult = snapshotAssemblerService.buildSnapshot(episodeId);
+        List<PriorAcceptedDiagnosisDTO> priorDiagnoses =
+                priorAcceptedDiagnosisAssemblerService.assemble(episodeId);
         CaseClinicalSnapshot snapshot = createSnapshot(episode, buildResult);
         AiRecommendationRun run = createRun(episode, snapshot, triggerType);
 
@@ -114,6 +125,7 @@ public class AiRecommendationServiceImpl implements AiRecommendationService {
                 .snapshotId(snapshot.getId())
                 .triggerType(triggerType.name())
                 .snapshotDataJson(buildResult.getSnapshotDataJson())
+                .priorAcceptedDiagnoses(priorDiagnoses)
                 .options(Map.of("language", "vi", "include_citations", true, "top_k", 5))
                 .build();
 
@@ -124,7 +136,7 @@ public class AiRecommendationServiceImpl implements AiRecommendationService {
 
         // Return immediately with PROCESSING status — client polls GET /runs/{runId}
         return AiRecommendationRunDetailDTO.builder()
-                .run(run)
+                .run(runMapper.toDto(run))
                 .items(Collections.emptyList())
                 .citations(Collections.emptyList())
                 .build();
@@ -270,7 +282,7 @@ public class AiRecommendationServiceImpl implements AiRecommendationService {
         }
 
         return AiRecommendationRunDetailDTO.builder()
-                .run(run)
+                .run(runMapper.toDto(run))
                 .items(savedItems)
                 .citations(savedCitations)
                 .build();
@@ -297,7 +309,7 @@ public class AiRecommendationServiceImpl implements AiRecommendationService {
         List<AiRagCitation> citations = citationRepository.findByRunId(runId);
 
         AiRecommendationRunDetailDTO detail = AiRecommendationRunDetailDTO.builder()
-                .run(run)
+                .run(runMapper.toDto(run))
                 .items(items)
                 .citations(citations)
                 .build();
@@ -328,6 +340,11 @@ public class AiRecommendationServiceImpl implements AiRecommendationService {
         }
 
         Page<AiRecommendationRun> page = runRepository.findByEpisodeIdOrderByCreatedAtDesc(episodeId, pageable);
+        page.getContent().forEach(r -> {
+            Hibernate.initialize(r.getEpisode());
+            if (r.getEpisode() != null) Hibernate.initialize(r.getEpisode().getPatient());
+            if (r.getSnapshot() != null) Hibernate.initialize(r.getSnapshot());
+        });
 
         PaginationResultDTO.Meta meta = new PaginationResultDTO.Meta();
         meta.setPage(page.getNumber() + 1);

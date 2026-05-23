@@ -3,6 +3,7 @@ package com.vietnam.pji.controller.auth;
 import com.turkraft.springfilter.boot.Filter;
 import com.vietnam.pji.dto.response.PaginationResultDTO;
 import com.vietnam.pji.dto.response.ResponseData;
+import com.vietnam.pji.dto.response.RoleDetailDTO;
 import com.vietnam.pji.model.auth.Role;
 import com.vietnam.pji.repository.RoleRepository;
 import com.vietnam.pji.services.RoleService;
@@ -22,7 +23,7 @@ public class RoleController {
 
     @PostMapping("/add-role")
     @ResponseStatus(HttpStatus.CREATED)
-    public ResponseData<Role> create(@RequestBody Role data) {
+    public ResponseData<RoleDetailDTO> create(@RequestBody Role data) {
         if (roleRepository.existsByName(data.getName())) {
             throw new IllegalArgumentException("Dữ liệu bị trùng lặp");
         }
@@ -42,7 +43,7 @@ public class RoleController {
     }
 
     @GetMapping("/role/{id}")
-    public ResponseData<Role> handleFetchSingle(@PathVariable("id") long id) {
+    public ResponseData<RoleDetailDTO> handleFetchSingle(@PathVariable("id") long id) {
         return new ResponseData<>(HttpStatus.OK.value(), "Fetch role successfully", roleService.fetchById(id));
     }
 
