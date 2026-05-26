@@ -25,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @RestController
 @RequestMapping("${api.prefix}")
 @Slf4j
-@Tag(name = "AI Recommendation Stream Controller")
+@Tag(name = "AI Recommendation Stream", description = "Server-Sent Events stream of AI recommendation progress (thought logs)")
 public class AiRecommendationStreamController {
 
     private static final long SSE_TIMEOUT_MS = 10 * 60 * 1000L; // 10 minutes

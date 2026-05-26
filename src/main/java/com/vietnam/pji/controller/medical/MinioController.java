@@ -3,6 +3,8 @@ package com.vietnam.pji.controller.medical;
 import com.vietnam.pji.dto.response.ResFileDTO;
 import com.vietnam.pji.exception.BusinessException;
 import com.vietnam.pji.utils.MinioChannel;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,9 +22,11 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("${api.prefix}/files")
+@Tag(name = "Files (MinIO)", description = "Upload medical files (PDF/JPEG/PNG/WEBP/JPG/DCM) to MinIO storage")
 public class MinioController {
     private final MinioChannel minioChannel;
 
+    @Operation(summary = "Upload file", description = "Stores a file in the given MinIO folder and returns a presigned URL")
     @PostMapping("")
     public ResponseEntity<ResFileDTO> uploadData(
             @RequestParam(name = "file", required = false) MultipartFile file,

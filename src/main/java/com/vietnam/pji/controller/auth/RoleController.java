@@ -7,6 +7,8 @@ import com.vietnam.pji.dto.response.RoleDetailDTO;
 import com.vietnam.pji.model.auth.Role;
 import com.vietnam.pji.repository.RoleRepository;
 import com.vietnam.pji.services.RoleService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -16,11 +18,13 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("${api.prefix}")
 @RequiredArgsConstructor
+@Tag(name = "Roles", description = "Manage user roles and their attached permissions")
 public class RoleController {
 
     private final RoleService roleService;
     private final RoleRepository roleRepository;
 
+    @Operation(summary = "Create role", description = "Adds a new role; fails if the role name already exists")
     @PostMapping("/add-role")
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseData<RoleDetailDTO> create(@RequestBody Role data) {
@@ -30,23 +34,27 @@ public class RoleController {
         return new ResponseData<>(HttpStatus.CREATED.value(), "Role created successfully", roleService.create(data));
     }
 
+    @Operation(summary = "Update role", description = "Updates an existing role and its permission set")
     @PutMapping("/update-role")
     public ResponseData<Void> update(@RequestBody Role data) {
         roleService.update(data);
         return new ResponseData<>(HttpStatus.OK.value(), "Role updated successfully");
     }
 
+    @Operation(summary = "Delete role", description = "Deletes a role by id")
     @DeleteMapping("/delete-role/{id}")
     public ResponseData<Void> delete(@PathVariable("id") long id) {
         roleService.delete(id);
         return new ResponseData<>(HttpStatus.OK.value(), "Role deleted successfully");
     }
 
+    @Operation(summary = "Get role by id", description = "Returns a role with its permission detail")
     @GetMapping("/role/{id}")
     public ResponseData<RoleDetailDTO> handleFetchSingle(@PathVariable("id") long id) {
         return new ResponseData<>(HttpStatus.OK.value(), "Fetch role successfully", roleService.fetchById(id));
     }
 
+    @Operation(summary = "List roles", description = "Paginated role list with springfilter support")
     @GetMapping("/roles")
     public ResponseData<PaginationResultDTO> handleFetchAllRole(
             @Filter Specification<Role> spec, Pageable pageable) {

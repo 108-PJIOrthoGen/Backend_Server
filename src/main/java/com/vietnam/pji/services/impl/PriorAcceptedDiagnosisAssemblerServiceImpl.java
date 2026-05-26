@@ -8,9 +8,9 @@ import com.vietnam.pji.model.agentic.AiRecommendationItem;
 import com.vietnam.pji.model.agentic.AiRecommendationRun;
 import com.vietnam.pji.model.agentic.DoctorRecommendationReview;
 import com.vietnam.pji.model.medical.PjiEpisode;
-import com.vietnam.pji.repository.AiRecommendationItemRepository;
 import com.vietnam.pji.repository.DoctorRecommendationReviewRepository;
 import com.vietnam.pji.repository.EpisodeRepository;
+import com.vietnam.pji.repository.ai.AiRecommendationItemRepository;
 import com.vietnam.pji.services.PriorAcceptedDiagnosisAssemblerService;
 import com.vietnam.pji.utils.DoctorModificationUtils;
 import com.vietnam.pji.utils.JsonUtils;
@@ -32,8 +32,10 @@ import java.util.Map;
  * Builds the "prior physician-validated diagnoses" context that the backend
  * carries to the RAG service alongside the current clinical snapshot.
  *
- * <p>Bounded by {@link #MAX_PRIOR_EPISODES} most-recent episodes and
- * {@link #LOOKBACK_MONTHS} months so prompt size stays predictable.</p>
+ * <p>
+ * Bounded by {@link #MAX_PRIOR_EPISODES} most-recent episodes and
+ * {@link #LOOKBACK_MONTHS} months so prompt size stays predictable.
+ * </p>
  */
 @Service
 @RequiredArgsConstructor
@@ -44,8 +46,7 @@ public class PriorAcceptedDiagnosisAssemblerServiceImpl implements PriorAccepted
     private static final int MAX_PRIOR_EPISODES = 3;
     private static final int LOOKBACK_MONTHS = 24;
 
-    private static final List<ReviewStatus> ACCEPTED_STATUSES =
-            List.of(ReviewStatus.ACCEPTED, ReviewStatus.MODIFIED);
+    private static final List<ReviewStatus> ACCEPTED_STATUSES = List.of(ReviewStatus.ACCEPTED, ReviewStatus.MODIFIED);
 
     private final EpisodeRepository episodeRepository;
     private final DoctorRecommendationReviewRepository reviewRepository;

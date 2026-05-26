@@ -54,7 +54,8 @@ public class PasswordRecoveryServiceImpl implements PasswordRecoveryService {
         }
 
         String otp = generateOtp();
-        redisTemplate.opsForValue().set(otpKey(normalizedEmail), passwordEncoder.encode(otp), otpTtlSeconds, TimeUnit.SECONDS);
+        redisTemplate.opsForValue().set(otpKey(normalizedEmail), passwordEncoder.encode(otp), otpTtlSeconds,
+                TimeUnit.SECONDS);
         redisTemplate.delete(attemptsKey(normalizedEmail));
         sendOtpEmail(normalizedEmail, otp);
     }
@@ -103,12 +104,15 @@ public class PasswordRecoveryServiceImpl implements PasswordRecoveryService {
             MimeMessageHelper helper = new MimeMessageHelper(message, "UTF-8");
             helper.setFrom(mailFrom);
             helper.setTo(email);
-            helper.setSubject("Mã OTP đặt lại mật khẩu PJI 108");
-            helper.setText("""
-                    <p>Xin chào,</p>
-                    <p>Mã OTP đặt lại mật khẩu của bạn là: <strong>%s</strong></p>
-                    <p>Mã có hiệu lực trong %d phút. Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.</p>
-                    """.formatted(otp, Math.max(1, otpTtlSeconds / 60)), true);
+            helper.setSubject("Mã OTP đặt lại mật khẩu cho tài khoản trên hệ thống 108 PJIOrthoGen");
+            helper.setText(
+                    """
+                            <p>Xin chào,</p>
+                            <p>Mã OTP đặt lại mật khẩu của bạn là: <strong>%s</strong></p>
+                            <p>Mã có hiệu lực trong %d phút. Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.</p>
+                            """
+                            .formatted(otp, Math.max(1, otpTtlSeconds / 60)),
+                    true);
             mailSender.send(message);
         } catch (MessagingException | MailException ex) {
             log.error("Unable to send password recovery OTP email to {}", email, ex);

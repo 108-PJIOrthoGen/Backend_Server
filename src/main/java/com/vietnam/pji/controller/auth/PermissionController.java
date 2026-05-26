@@ -5,6 +5,8 @@ import com.vietnam.pji.dto.response.PaginationResultDTO;
 import com.vietnam.pji.dto.response.ResponseData;
 import com.vietnam.pji.model.auth.Permission;
 import com.vietnam.pji.services.PermissionService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -14,10 +16,12 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("${api.prefix}")
 @RequiredArgsConstructor
+@Tag(name = "Permissions", description = "Manage fine-grained authorization permissions")
 public class PermissionController {
 
     private final PermissionService permissionService;
 
+    @Operation(summary = "Create permission", description = "Adds a new permission; fails if module+apiPath+method already exists")
     @PostMapping("/add-permission")
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseData<Permission> create(@RequestBody Permission data) {
@@ -27,23 +31,27 @@ public class PermissionController {
         return new ResponseData<>(HttpStatus.CREATED.value(), "Permission created successfully", permissionService.create(data));
     }
 
+    @Operation(summary = "Update permission", description = "Updates an existing permission by id")
     @PutMapping("/update-permission")
     public ResponseData<Void> update(@RequestBody Permission data) {
         permissionService.update(data);
         return new ResponseData<>(HttpStatus.OK.value(), "Permission updated successfully");
     }
 
+    @Operation(summary = "Delete permission", description = "Deletes a permission by id")
     @DeleteMapping("/delete-permission/{id}")
     public ResponseData<Void> handleDelete(@PathVariable("id") long id) {
         permissionService.delete(id);
         return new ResponseData<>(HttpStatus.OK.value(), "Permission deleted successfully");
     }
 
+    @Operation(summary = "Get permission by id")
     @GetMapping("/permission/{id}")
     public ResponseData<Permission> getById(@PathVariable long id) {
         return new ResponseData<>(HttpStatus.OK.value(), "Fetch permission successfully", permissionService.getById(id));
     }
 
+    @Operation(summary = "List permissions", description = "Paginated permission list with springfilter support")
     @GetMapping("/permissions")
     public ResponseData<PaginationResultDTO> handleFetchAllPermission(
             @Filter Specification<Permission> spec, Pageable pageable) {

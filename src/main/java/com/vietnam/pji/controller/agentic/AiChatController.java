@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("${api.prefix}")
 @RequiredArgsConstructor
-@Tag(name = "AI Chat Controller")
+@Tag(name = "AI Chat", description = "Conversational AI chat sessions scoped to an episode")
 public class AiChatController {
 
     private final AiChatService aiChatService;

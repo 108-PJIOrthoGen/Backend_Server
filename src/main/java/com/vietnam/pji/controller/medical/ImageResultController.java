@@ -5,6 +5,7 @@ import com.vietnam.pji.dto.response.ImageResultResponseDTO;
 import com.vietnam.pji.dto.response.PaginationResultDTO;
 import com.vietnam.pji.dto.response.ResponseData;
 import com.vietnam.pji.services.ImageResultService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,12 +17,13 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("${api.prefix}")
 @Validated
-@Tag(name = "Image Result Controller")
+@Tag(name = "Image Results", description = "Imaging study results (X-ray, CT, MRI) attached to an episode")
 @RequiredArgsConstructor
 public class ImageResultController {
 
     private final ImageResultService imageResultService;
 
+    @Operation(summary = "Create image result")
     @PostMapping("/image-results")
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseData<ImageResultResponseDTO> createImageResult(@Valid @RequestBody ImageResultRequestDTO request) {
@@ -29,6 +31,7 @@ public class ImageResultController {
                 imageResultService.create(request));
     }
 
+    @Operation(summary = "Update image result")
     @PutMapping("/image-results/{id}")
     public ResponseData<ImageResultResponseDTO> updateImageResult(
             @PathVariable Long id, @Valid @RequestBody ImageResultRequestDTO request) {
@@ -36,18 +39,21 @@ public class ImageResultController {
                 imageResultService.update(id, request));
     }
 
+    @Operation(summary = "Get image result by id")
     @GetMapping("/image-results/{id}")
     public ResponseData<ImageResultResponseDTO> getImageResult(@PathVariable Long id) {
         return new ResponseData<>(HttpStatus.OK.value(), "Fetch image result successfully",
                 imageResultService.getById(id));
     }
 
+    @Operation(summary = "Delete image result")
     @DeleteMapping("/image-results/{id}")
     public ResponseData<Void> deleteImageResult(@PathVariable Long id) {
         imageResultService.delete(id);
         return new ResponseData<>(HttpStatus.OK.value(), "Image result deleted successfully");
     }
 
+    @Operation(summary = "List image results by episode")
     @GetMapping("/episodes/{episodeId}/image-results")
     public ResponseData<PaginationResultDTO> getImageResultsByEpisode(
             @PathVariable Long episodeId, Pageable pageable) {

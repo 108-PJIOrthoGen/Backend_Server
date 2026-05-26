@@ -11,6 +11,10 @@ import com.vietnam.pji.dto.response.PaginationResultDTO;
 import com.vietnam.pji.exception.ResourceNotFoundException;
 import com.vietnam.pji.model.agentic.*;
 import com.vietnam.pji.repository.*;
+import com.vietnam.pji.repository.ai.AiChatMessageRepository;
+import com.vietnam.pji.repository.ai.AiChatSessionRepository;
+import com.vietnam.pji.repository.ai.AiRecommendationItemRepository;
+import com.vietnam.pji.repository.ai.AiRecommendationRunRepository;
 import com.vietnam.pji.services.AiChatService;
 import com.vietnam.pji.services.AiServiceClient;
 import com.vietnam.pji.services.EpisodeSnapshotAssemblerService;
@@ -143,8 +147,10 @@ public class AiChatServiceImpl implements AiChatService {
         Page<AiChatSession> page = sessionRepository.findByEpisodeIdOrderByCreatedAtDesc(episodeId, pageable);
         page.getContent().forEach(s -> {
             Hibernate.initialize(s.getEpisode());
-            if (s.getRun() != null) Hibernate.initialize(s.getRun());
-            if (s.getCurrentItem() != null) Hibernate.initialize(s.getCurrentItem());
+            if (s.getRun() != null)
+                Hibernate.initialize(s.getRun());
+            if (s.getCurrentItem() != null)
+                Hibernate.initialize(s.getCurrentItem());
         });
 
         PaginationResultDTO.Meta meta = new PaginationResultDTO.Meta();

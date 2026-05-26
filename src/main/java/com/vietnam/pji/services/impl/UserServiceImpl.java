@@ -1,5 +1,6 @@
 package com.vietnam.pji.services.impl;
 
+import com.vietnam.pji.dto.request.UpdateOwnProfileRequestDTO;
 import com.vietnam.pji.dto.request.UserRequestDTO;
 import com.vietnam.pji.dto.response.PaginationResultDTO;
 import com.vietnam.pji.dto.response.UserDetailResponse;
@@ -128,5 +129,33 @@ public class UserServiceImpl implements UserService {
             user.setLastLogin(Instant.now());
             userRepository.save(user);
         }
+    }
+
+    @Override
+    public User updateOwnProfile(String email, UpdateOwnProfileRequestDTO data) {
+        User user = userRepository.findByEmail(email);
+        if (user == null) {
+            throw new ResourceNotFoundException("User not found");
+        }
+        user.setFullName(data.getFullName());
+        if (data.getPhone() != null) {
+            user.setPhone(data.getPhone().isBlank() ? null : data.getPhone());
+        }
+        if (data.getDepartment() != null) {
+            user.setDepartment(data.getDepartment().isBlank() ? null : data.getDepartment());
+        }
+        if (data.getAvatar() != null) {
+            user.setAvatar(data.getAvatar().isBlank() ? null : data.getAvatar());
+        }
+        if (data.getNewPassword() != null && !data.getNewPassword().isBlank()) {
+            if (data.getCurrentPassword() == null
+                    || !passwordEncoder.matches(data.getCurrentPassword(), user.getPassword())) {
+                throw new InvalidDataException("Mật khẩu hiện tại không đúng.");
+            }
+            user.setPassword(passwordEncoder.encode(data.getNewPassword()));
+        }
+        User saved = userRepository.save(user);
+        redisService.evictUserPermissions(saved.getEmail());
+        return saved;
     }
 }

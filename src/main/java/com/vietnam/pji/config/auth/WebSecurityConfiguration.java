@@ -35,12 +35,14 @@ public class WebSecurityConfiguration {
         @Bean
         public SecurityFilterChain filterChain(HttpSecurity http,
                                                AuthEntryPointConfig authEntryPointConfig,
-                                               RateLimitFilter rateLimitFilter)
+                                               RateLimitFilter rateLimitFilter,
+                                               ActiveSessionFilter activeSessionFilter)
                         throws Exception {
                 String[] whileList = {
                                 "/", "/api/v1/", "/ws/**",
                                 "/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/register",
                                 "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password",
+                                "/api/v1/auth/verify-device",
                                 "/storage/**",
                                 "/actuator/health",
                                 "/actuator/prometheus",
@@ -62,7 +64,8 @@ public class WebSecurityConfiguration {
                                 .formLogin(AbstractHttpConfigurer::disable)
                                 .sessionManagement(session -> session
                                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                                .addFilterAfter(rateLimitFilter, BearerTokenAuthenticationFilter.class);
+                                .addFilterAfter(activeSessionFilter, BearerTokenAuthenticationFilter.class)
+                                .addFilterAfter(rateLimitFilter, ActiveSessionFilter.class);
                 return http.build();
         }
 }

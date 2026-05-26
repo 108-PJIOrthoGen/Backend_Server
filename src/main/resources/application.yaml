@@ -47,10 +47,10 @@ spring:
     password: ${RABBITMQ_PASSWORD}
 
   mail:
-    host: ${MAIL_HOST:}
+    host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
+    username: ${MAIL_USERNAME:hieuxitsuki05@gmail.com}
+    password: ${MAIL_PASSWORD:ejdvrfwylicuhvda}
     properties:
       mail:
         smtp:
@@ -99,6 +99,11 @@ app:
     otp-ttl-seconds: ${PASSWORD_RECOVERY_OTP_TTL_SECONDS:300}
     max-attempts: ${PASSWORD_RECOVERY_MAX_ATTEMPTS:5}
     mail-from: ${PASSWORD_RECOVERY_MAIL_FROM:no-reply@localhost}
+  device-verification:
+    otp-ttl-seconds: ${DEVICE_VERIFICATION_OTP_TTL_SECONDS:300}
+    max-attempts: ${DEVICE_VERIFICATION_MAX_ATTEMPTS:5}
+    trusted-device-days: ${DEVICE_VERIFICATION_TRUSTED_DAYS:30}
+    mail-from: ${DEVICE_VERIFICATION_MAIL_FROM:${app.password-recovery.mail-from}}
 
 api:
   prefix: /api/v1
@@ -130,6 +135,7 @@ rate-limit:
         - /api/v1/auth/refresh
         - /api/v1/auth/forgot-password
         - /api/v1/auth/reset-password
+        - /api/v1/auth/verify-device
       capacity: 5
       refill-tokens: 5
       refill-period: 1m
@@ -181,5 +187,8 @@ openapi:
     api-docs: api-service
     serverUrl: ${OPENAPI_SERVER_URL:http://localhost:${server.port}}
     serverName: ${OPENAPI_SERVER_NAME:Local Dev}
-    title: API Document
-    version: 1.0.0
+    title: ${OPENAPI_TITLE:PJI API}
+    version: ${OPENAPI_VERSION:1.0.0}
+    description: ${OPENAPI_DESCRIPTION:PJI clinical decision support backend — REST API}
+    license-name: ${OPENAPI_LICENSE_NAME:Apache 2.0}
+    license-url: ${OPENAPI_LICENSE_URL:https://www.apache.org/licenses/LICENSE-2.0}

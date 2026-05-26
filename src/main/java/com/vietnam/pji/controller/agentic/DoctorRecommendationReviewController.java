@@ -18,7 +18,7 @@ import java.util.List;
 @RequestMapping("${api.prefix}")
 @Validated
 @RequiredArgsConstructor
-@Tag(name = "Doctor Recommendation Review Controller")
+@Tag(name = "Doctor Reviews", description = "Doctor review and feedback on AI recommendation runs")
 public class DoctorRecommendationReviewController {
 
     private final DoctorRecommendationReviewService reviewService;

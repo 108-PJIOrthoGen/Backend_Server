@@ -5,6 +5,7 @@ import com.vietnam.pji.dto.response.PaginationResultDTO;
 import com.vietnam.pji.dto.response.ResponseData;
 import com.vietnam.pji.model.medical.LabResult;
 import com.vietnam.pji.services.LabResultService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,12 +17,13 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("${api.prefix}")
 @Validated
-@Tag(name = "Lab Result Controller")
+@Tag(name = "Lab Results", description = "Laboratory test results attached to an episode")
 @RequiredArgsConstructor
 public class LabResultController {
 
     private final LabResultService labResultService;
 
+    @Operation(summary = "Create lab result")
     @PostMapping("/lab-results")
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseData<LabResult> createLabResult(@Valid @RequestBody LabResultRequestDTO request) {
@@ -29,6 +31,7 @@ public class LabResultController {
                 labResultService.create(request));
     }
 
+    @Operation(summary = "Update lab result")
     @PutMapping("/lab-results/{id}")
     public ResponseData<LabResult> updateLabResult(
             @PathVariable Long id, @Valid @RequestBody LabResultRequestDTO request) {
@@ -36,18 +39,21 @@ public class LabResultController {
                 labResultService.update(id, request));
     }
 
+    @Operation(summary = "Get lab result by id")
     @GetMapping("/lab-results/{id}")
     public ResponseData<LabResult> getLabResult(@PathVariable Long id) {
         return new ResponseData<>(HttpStatus.OK.value(), "Fetch lab result successfully",
                 labResultService.getById(id));
     }
 
+    @Operation(summary = "Delete lab result")
     @DeleteMapping("/lab-results/{id}")
     public ResponseData<Void> deleteLabResult(@PathVariable Long id) {
         labResultService.delete(id);
         return new ResponseData<>(HttpStatus.OK.value(), "Lab result deleted successfully");
     }
 
+    @Operation(summary = "List lab results by episode")
     @GetMapping("/episodes/{episodeId}/lab-results")
     public ResponseData<PaginationResultDTO> getLabResultsByEpisode(
             @PathVariable Long episodeId, Pageable pageable) {

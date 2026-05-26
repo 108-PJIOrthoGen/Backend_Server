@@ -7,6 +7,7 @@ import com.vietnam.pji.dto.response.ResponseData;
 import com.vietnam.pji.dto.response.UserDetailResponse;
 import com.vietnam.pji.model.auth.User;
 import com.vietnam.pji.services.UserService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,35 +22,40 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("${api.prefix}")
 @Validated
 @Slf4j
-@Tag(name = "User Controller")
+@Tag(name = "Users", description = "Manage user accounts (create, update, delete, list)")
 @RequiredArgsConstructor
 public class UserController {
 
     private final UserService userService;
 
+    @Operation(summary = "Create user", description = "Creates a new user account with assigned role")
     @PostMapping("/add-user")
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseData<UserDetailResponse> createUser(@Valid @RequestBody UserRequestDTO request) {
         return new ResponseData<>(HttpStatus.CREATED.value(), "User created successfully", userService.create(request));
     }
 
+    @Operation(summary = "Update user", description = "Updates an existing user profile and role")
     @PutMapping("/update-user")
     public ResponseData<Void> updateUser(@Valid @RequestBody UserRequestDTO request) {
         userService.update(request);
         return new ResponseData<>(HttpStatus.OK.value(), "User updated successfully");
     }
 
+    @Operation(summary = "Get user by id")
     @GetMapping("/user/{id}")
     public ResponseData<UserDetailResponse> getInfo(@PathVariable long id) {
         return new ResponseData<>(HttpStatus.OK.value(), "Fetch user successfully", userService.getInfo(id));
     }
 
+    @Operation(summary = "Delete user", description = "Removes a user by id")
     @DeleteMapping("/delete-user/{id}")
     public ResponseData<Void> deleteUser(@PathVariable long id) {
         userService.delete(id);
         return new ResponseData<>(HttpStatus.OK.value(), "User deleted successfully");
     }
 
+    @Operation(summary = "List users", description = "Paginated user list with springfilter support")
     @GetMapping("/users")
     public ResponseData<PaginationResultDTO> getAllUsersInfo(
             @Filter Specification<User> spec, Pageable pageable) {

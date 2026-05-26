@@ -99,9 +99,12 @@ public class SecurityUtils {
     }
 
     /**
-     * JWT generate Access Token
+     * JWT generate Access Token. `sessionId` is the active-session id checked
+     * by ActiveSessionFilter; logging in from a new device rotates this value
+     * so the previous device's still-valid access token is rejected on its
+     * next request.
      */
-    public String generateAccessToken(String email, ResLoginDTO user) {
+    public String generateAccessToken(String email, ResLoginDTO user, String sessionId) {
         ResLoginDTO.InfoWithinToken token = new ResLoginDTO.InfoWithinToken();
         token.setId(user.getUser().getId());
         token.setEmail(user.getUser().getEmail());
@@ -116,15 +119,18 @@ public class SecurityUtils {
         .expiresAt(validity)
         .subject(email)
         .claim("user account", token)
+        .claim("sid", sessionId)
         .build();
         JwsHeader jwsHeader = JwsHeader.with(JWT_ALGORITHM).build();
         return this.jwtEncoder.encode(JwtEncoderParameters.from(jwsHeader, claims)).getTokenValue();
     }
 
      /**
-     * JWT generate Refresh Token
+     * JWT generate Refresh Token. Carries the same `sid` as the matching
+     * access token so a stolen refresh token from a revoked device cannot
+     * be exchanged for a fresh access token.
      */
-    public String generateRefreshToken(String emailLogin, ResLoginDTO resLoginDTO){
+    public String generateRefreshToken(String emailLogin, ResLoginDTO resLoginDTO, String sessionId){
         ResLoginDTO.InfoWithinToken data = new ResLoginDTO.InfoWithinToken();
         data.setId(resLoginDTO.getUser().getId());
         data.setEmail(resLoginDTO.getUser().getEmail());
@@ -138,6 +144,7 @@ public class SecurityUtils {
         .expiresAt(validity)
         .subject(emailLogin)
         .claim("user account", data)
+        .claim("sid", sessionId)
         .build();
         JwsHeader jwsHeader = JwsHeader.with(JWT_ALGORITHM).build();
         return this.jwtEncoder.encode(JwtEncoderParameters.from(jwsHeader, claims)).getTokenValue();

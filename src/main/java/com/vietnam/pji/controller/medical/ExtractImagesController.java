@@ -22,7 +22,7 @@ import java.io.IOException;
 @RequestMapping("${api.prefix}/extract-images")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "Extract Images Controller")
+@Tag(name = "Extract Images", description = "Submit medical record images for VLM-based structured data extraction")
 public class ExtractImagesController {
 
     private static final int MAX_FILES = 10;

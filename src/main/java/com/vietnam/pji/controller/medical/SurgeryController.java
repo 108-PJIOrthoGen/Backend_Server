@@ -5,6 +5,7 @@ import com.vietnam.pji.dto.response.PaginationResultDTO;
 import com.vietnam.pji.dto.response.ResponseData;
 import com.vietnam.pji.model.medical.Surgery;
 import com.vietnam.pji.services.SurgeryService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,12 +17,13 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("${api.prefix}")
 @Validated
-@Tag(name = "Surgery Controller")
+@Tag(name = "Surgeries", description = "Surgery records attached to an episode")
 @RequiredArgsConstructor
 public class SurgeryController {
 
     private final SurgeryService surgeryService;
 
+    @Operation(summary = "Create surgery")
     @PostMapping("/surgeries")
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseData<Surgery> createSurgery(@Valid @RequestBody SurgeryRequestDTO request) {
@@ -29,6 +31,7 @@ public class SurgeryController {
                 surgeryService.create(request));
     }
 
+    @Operation(summary = "Update surgery")
     @PutMapping("/surgeries/{id}")
     public ResponseData<Surgery> updateSurgery(
             @PathVariable Long id, @Valid @RequestBody SurgeryRequestDTO request) {
@@ -36,18 +39,21 @@ public class SurgeryController {
                 surgeryService.update(id, request));
     }
 
+    @Operation(summary = "Get surgery by id")
     @GetMapping("/surgeries/{id}")
     public ResponseData<Surgery> getSurgery(@PathVariable Long id) {
         return new ResponseData<>(HttpStatus.OK.value(), "Fetch surgery successfully",
                 surgeryService.getById(id));
     }
 
+    @Operation(summary = "Delete surgery")
     @DeleteMapping("/surgeries/{id}")
     public ResponseData<Void> deleteSurgery(@PathVariable Long id) {
         surgeryService.delete(id);
         return new ResponseData<>(HttpStatus.OK.value(), "Surgery deleted successfully");
     }
 
+    @Operation(summary = "List surgeries by episode")
     @GetMapping("/episodes/{episodeId}/surgeries")
     public ResponseData<PaginationResultDTO> getSurgeriesByEpisode(
             @PathVariable Long episodeId, Pageable pageable) {

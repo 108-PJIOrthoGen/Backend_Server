@@ -1,5 +1,6 @@
 package com.vietnam.pji.services;
 
+import com.vietnam.pji.dto.request.UpdateOwnProfileRequestDTO;
 import com.vietnam.pji.dto.request.UserRequestDTO;
 import com.vietnam.pji.dto.response.PaginationResultDTO;
 import com.vietnam.pji.dto.response.UserDetailResponse;
@@ -27,4 +28,12 @@ public interface UserService {
     void saveRefreshToken(String token, String email);
 
     void updateLastLogin(String email);
+
+    /**
+     * Apply a self-service profile update for the user identified by email.
+     * Only the fields named on {@link UpdateOwnProfileRequestDTO} are touched
+     * — role, status, and email are not editable here. When newPassword is
+     * non-blank, currentPassword must match the stored hash.
+     */
+    User updateOwnProfile(String email, UpdateOwnProfileRequestDTO data);
 }
