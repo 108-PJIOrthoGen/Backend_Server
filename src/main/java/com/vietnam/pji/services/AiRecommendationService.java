@@ -18,4 +18,12 @@ public interface AiRecommendationService {
     PaginationResultDTO getRunHistory(Long episodeId, Pageable pageable);
 
     AiRecommendationRunDetailDTO retryRun(Long runId);
+
+    /**
+     * Cancel an in-flight run. Validates ownership (caller must be the user who
+     * started the run), checks the run is still in a cancellable state, marks
+     * the row as CANCELLED, and writes a Redis cancel flag so the Python worker
+     * sees it on its next checkpoint.
+     */
+    void cancelRun(Long runId);
 }

@@ -9,6 +9,10 @@ import com.vietnam.pji.dto.response.RabbitMQProgressMessage;
 import com.vietnam.pji.dto.response.RabbitMQRecommendationResultMessage;
 import com.vietnam.pji.model.agentic.*;
 import com.vietnam.pji.repository.*;
+import com.vietnam.pji.repository.ai.AiRagCitationRepository;
+import com.vietnam.pji.repository.ai.AiRecommendationItemRepository;
+import com.vietnam.pji.repository.ai.AiRecommendationRunRepository;
+import com.vietnam.pji.services.NotificationService;
 import com.vietnam.pji.services.PendingLabTaskService;
 import com.vietnam.pji.services.RedisService;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +39,7 @@ public class RabbitMQConsumer {
     private final PendingLabTaskService pendingLabTaskService;
     private final RedisService redisService;
     private final AiRecommendationStreamController streamController;
+    private final NotificationService notificationService;
 
     /**
      * Relay progress (thought-log) messages from the Python worker straight to
@@ -81,6 +86,14 @@ public class RabbitMQConsumer {
             return;
         }
 
+        // Cancelled before the worker could finish — drop the result entirely.
+        // Do NOT overwrite the status or create any notification.
+        if (run.getStatus() == RunStatus.CANCELLED) {
+            log.info("Run {} was CANCELLED — dropping late worker result", run.getId());
+            streamController.closeRun(run.getId(), "CANCELLED");
+            return;
+        }
+
         // Handle FAILED status
         if ("FAILED".equals(result.getStatus())) {
             run.setStatus(RunStatus.FAILED);
@@ -91,6 +104,7 @@ public class RabbitMQConsumer {
             runRepository.save(run);
             log.warn("AI processing failed for runId={}: {}", run.getId(), result.getErrorMessage());
             streamController.closeRun(run.getId(), "FAILED");
+            notifyRunFinished(run, false, run.getErrorMessage());
             return;
         }
 
@@ -101,6 +115,7 @@ public class RabbitMQConsumer {
             runRepository.save(run);
             log.warn("AI result has no items for runId={}", run.getId());
             streamController.closeRun(run.getId(), "FAILED");
+            notifyRunFinished(run, false, "AI response missing required items");
             return;
         }
 
@@ -194,6 +209,57 @@ public class RabbitMQConsumer {
                 result.getCitations() != null ? result.getCitations().size() : 0);
 
         streamController.closeRun(run.getId(), "SUCCESS");
+        notifyRunFinished(run, true, null);
+    }
+
+    /**
+     * Create a Notification row for the user who started the run, so the badge
+     * + dropdown in the UI can show it even after they navigated away. The
+     * NotificationService also fans it out over the per-user SSE stream.
+     */
+    private void notifyRunFinished(AiRecommendationRun run, boolean success, String errorMessage) {
+        Long userId = run.getCreatedByUserId();
+        if (userId == null) {
+            log.debug("Run {} has no createdByUserId — skipping notification", run.getId());
+            return;
+        }
+
+        Long episodeId = null;
+        try {
+            episodeId = run.getEpisode() != null ? run.getEpisode().getId() : null;
+        } catch (Exception e) {
+            log.debug("Failed to read episode id for run {}: {}", run.getId(), e.getMessage());
+        }
+
+        String linkUrl = "/?runId=" + run.getId()
+                + (episodeId != null ? "&episodeId=" + episodeId : "");
+        try {
+            if (success) {
+                notificationService.create(
+                        userId,
+                        NotificationType.AI_RECOMMENDATION_DONE,
+                        NotificationSeverity.SUCCESS,
+                        "Phân tích PJI hoàn tất",
+                        "Khuyến nghị AI cho ca lâm sàng đã sẵn sàng để xem.",
+                        String.valueOf(run.getId()),
+                        linkUrl);
+            } else {
+                String msg = errorMessage != null && !errorMessage.isBlank()
+                        ? errorMessage
+                        : "Phân tích AI thất bại. Vui lòng thử lại.";
+                notificationService.create(
+                        userId,
+                        NotificationType.AI_RECOMMENDATION_FAILED,
+                        NotificationSeverity.ERROR,
+                        "Phân tích PJI thất bại",
+                        msg,
+                        String.valueOf(run.getId()),
+                        linkUrl);
+            }
+        } catch (Exception e) {
+            // Notification failure must not break the result-saving transaction.
+            log.warn("Failed to create notification for runId={}: {}", run.getId(), e.getMessage());
+        }
     }
 
     private ItemCategory parseCategory(String category) {
@@ -216,17 +282,19 @@ public class RabbitMQConsumer {
 
     @SuppressWarnings("unchecked")
     private void createPendingTasksFromCompleteness(AiRecommendationRun run,
-                                                    Map<String, Object> dataCompleteness) {
-        if (dataCompleteness == null) return;
+            Map<String, Object> dataCompleteness) {
+        if (dataCompleteness == null)
+            return;
 
-        List<Map<String, Object>> missingItems =
-                (List<Map<String, Object>>) dataCompleteness.get("missing_items");
-        if (missingItems == null || missingItems.isEmpty()) return;
+        List<Map<String, Object>> missingItems = (List<Map<String, Object>>) dataCompleteness.get("missing_items");
+        if (missingItems == null || missingItems.isEmpty())
+            return;
 
         try {
             Long episodeId = run.getEpisode().getId();
             Long patientId = run.getEpisode().getPatient() != null
-                    ? run.getEpisode().getPatient().getId() : null;
+                    ? run.getEpisode().getPatient().getId()
+                    : null;
             // Assign to the user who created this run
             Long userId = null;
             if (run.getCreatedBy() != null) {

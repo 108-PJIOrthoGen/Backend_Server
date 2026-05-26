@@ -15,10 +15,11 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("${api.prefix}")
 @RequiredArgsConstructor
-@Tag(name = "AI Recommendation Controller")
+@Tag(name = "AI Recommendations", description = "Generate, poll, and retry PJI AI recommendation runs (async via RabbitMQ)")
 public class AiRecommendationController {
 
         private final AiRecommendationService aiRecommendationService;
+        private final AiRecommendationStreamController streamController;
 
         /**
          * Async: publishes to RabbitMQ, returns 202 with run in PROCESSING status.
@@ -68,5 +69,16 @@ public class AiRecommendationController {
                 return new ResponseData<>(HttpStatus.ACCEPTED.value(),
                                 "Retry job submitted",
                                 aiRecommendationService.retryRun(runId));
+        }
+
+        @PostMapping("/ai-recommendations/runs/{runId}/cancel")
+        @ResponseStatus(HttpStatus.NO_CONTENT)
+        @Operation(summary = "Cancel an in-flight AI recommendation run")
+        public ResponseData<Void> cancelRun(@PathVariable Long runId) {
+                aiRecommendationService.cancelRun(runId);
+                // Close the per-run SSE so any client still listening sees the
+                // terminal event immediately instead of waiting for timeout.
+                streamController.closeRun(runId, "CANCELLED");
+                return new ResponseData<>(HttpStatus.NO_CONTENT.value(), "Run cancelled");
         }
 }

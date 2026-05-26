@@ -12,6 +12,9 @@ import com.vietnam.pji.exception.ResourceNotFoundException;
 import com.vietnam.pji.model.agentic.*;
 import com.vietnam.pji.model.medical.PjiEpisode;
 import com.vietnam.pji.repository.*;
+import com.vietnam.pji.repository.ai.AiRagCitationRepository;
+import com.vietnam.pji.repository.ai.AiRecommendationItemRepository;
+import com.vietnam.pji.repository.ai.AiRecommendationRunRepository;
 import com.vietnam.pji.dto.request.RabbitMQRecommendationMessage;
 import com.vietnam.pji.message.RabbitMQPublisher;
 import com.vietnam.pji.dto.request.PriorAcceptedDiagnosisDTO;
@@ -21,6 +24,7 @@ import com.vietnam.pji.services.EpisodeSnapshotAssemblerService;
 import com.vietnam.pji.services.EpisodeSnapshotAssemblerService.SnapshotBuildResult;
 import com.vietnam.pji.services.PriorAcceptedDiagnosisAssemblerService;
 import com.vietnam.pji.services.RedisService;
+import com.vietnam.pji.utils.SecurityUtils;
 import com.vietnam.pji.utils.mapper.AiRecommendationRunMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -66,8 +70,7 @@ public class AiRecommendationServiceImpl implements AiRecommendationService {
 
         // TX1: Build snapshot + create run
         SnapshotBuildResult buildResult = snapshotAssemblerService.buildSnapshot(episodeId);
-        List<PriorAcceptedDiagnosisDTO> priorDiagnoses =
-                priorAcceptedDiagnosisAssemblerService.assemble(episodeId);
+        List<PriorAcceptedDiagnosisDTO> priorDiagnoses = priorAcceptedDiagnosisAssemblerService.assemble(episodeId);
 
         CaseClinicalSnapshot snapshot = createSnapshot(episode, buildResult);
         AiRecommendationRun run = createRun(episode, snapshot, triggerType);
@@ -112,8 +115,7 @@ public class AiRecommendationServiceImpl implements AiRecommendationService {
 
         // Build snapshot + create run (same as sync)
         SnapshotBuildResult buildResult = snapshotAssemblerService.buildSnapshot(episodeId);
-        List<PriorAcceptedDiagnosisDTO> priorDiagnoses =
-                priorAcceptedDiagnosisAssemblerService.assemble(episodeId);
+        List<PriorAcceptedDiagnosisDTO> priorDiagnoses = priorAcceptedDiagnosisAssemblerService.assemble(episodeId);
         CaseClinicalSnapshot snapshot = createSnapshot(episode, buildResult);
         AiRecommendationRun run = createRun(episode, snapshot, triggerType);
 
@@ -174,6 +176,7 @@ public class AiRecommendationServiceImpl implements AiRecommendationService {
                 .triggerType(triggerType)
                 .status(RunStatus.PROCESSING)
                 .requestId(UUID.randomUUID().toString())
+                .createdByUserId(SecurityUtils.getCurrentUserId())
                 .build();
 
         return runRepository.save(run);
@@ -342,8 +345,10 @@ public class AiRecommendationServiceImpl implements AiRecommendationService {
         Page<AiRecommendationRun> page = runRepository.findByEpisodeIdOrderByCreatedAtDesc(episodeId, pageable);
         page.getContent().forEach(r -> {
             Hibernate.initialize(r.getEpisode());
-            if (r.getEpisode() != null) Hibernate.initialize(r.getEpisode().getPatient());
-            if (r.getSnapshot() != null) Hibernate.initialize(r.getSnapshot());
+            if (r.getEpisode() != null)
+                Hibernate.initialize(r.getEpisode().getPatient());
+            if (r.getSnapshot() != null)
+                Hibernate.initialize(r.getSnapshot());
         });
 
         PaginationResultDTO.Meta meta = new PaginationResultDTO.Meta();
@@ -368,6 +373,43 @@ public class AiRecommendationServiceImpl implements AiRecommendationService {
         }
 
         return generateRecommendation(existingRun.getEpisode().getId(), existingRun.getTriggerType());
+    }
+
+    // Long enough to outlast any plausible run; the row is durable so the
+    // worker's redis check is just a fast-path. Workers also re-check at the
+    // end and drop the result if the row is CANCELLED.
+    private static final long CANCEL_KEY_TTL_SECONDS = 1800L; // 30 minutes
+
+    @Override
+    @Transactional
+    public void cancelRun(Long runId) {
+        AiRecommendationRun run = runRepository.findById(runId)
+                .orElseThrow(() -> new ResourceNotFoundException("Run not found: " + runId));
+
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        if (currentUserId == null) {
+            throw new org.springframework.security.access.AccessDeniedException("Unauthenticated");
+        }
+        if (run.getCreatedByUserId() != null && !run.getCreatedByUserId().equals(currentUserId)) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "You can only cancel runs you started");
+        }
+
+        RunStatus status = run.getStatus();
+        if (status != RunStatus.QUEUED && status != RunStatus.PROCESSING) {
+            throw new BusinessException("Run is not cancellable (current status: " + status + ")");
+        }
+
+        run.setStatus(RunStatus.CANCELLED);
+        run.setErrorMessage("Cancelled by user");
+        runRepository.save(run);
+
+        // Signal any worker currently processing this run. Even if no worker is
+        // listening, the row state is the source of truth — the late-result
+        // path in RabbitMQConsumer will drop the result.
+        redisService.markRunCancelled(runId, CANCEL_KEY_TTL_SECONDS);
+
+        log.info("Cancelled runId={} by userId={}", runId, currentUserId);
     }
 
     private ItemCategory parseCategory(String category) {

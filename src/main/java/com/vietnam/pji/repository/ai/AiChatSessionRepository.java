@@ -1,4 +1,4 @@
-package com.vietnam.pji.repository;
+package com.vietnam.pji.repository.ai;
 
 import com.vietnam.pji.model.agentic.AiChatSession;
 import org.springframework.data.domain.Page;

@@ -1,4 +1,4 @@
-package com.vietnam.pji.repository;
+package com.vietnam.pji.repository.ai;
 
 import com.vietnam.pji.constant.RunStatus;
 import com.vietnam.pji.model.agentic.AiRecommendationRun;

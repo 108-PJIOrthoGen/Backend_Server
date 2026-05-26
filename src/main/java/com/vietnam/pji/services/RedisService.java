@@ -35,6 +35,19 @@ public interface RedisService {
     boolean validateRefreshToken(String email, String refreshToken);
 
     /**
+     * Lưu id phiên đang hoạt động cho email (single-device enforcement).
+     * Mọi access/refresh token chứa claim "sid" khác giá trị này sẽ bị
+     * ActiveSessionFilter từ chối với mã SESSION_REVOKED.
+     */
+    void saveActiveSession(String email, String sessionId, long expirationTimeInSeconds);
+
+    /** Lấy id phiên đang hoạt động cho email (null nếu chưa có). */
+    String getActiveSession(String email);
+
+    /** Xóa id phiên đang hoạt động (logout / revoke). */
+    void deleteActiveSession(String email);
+
+    /**
      * Thêm access token vào blacklist khi logout
      *
      * @param accessToken             token cần blacklist
@@ -75,4 +88,19 @@ public interface RedisService {
     String getCachedRunDetail(Long runId);
 
     void evictRunDetail(Long runId);
+
+    // ===== AI Run Cancellation Signaling =====
+
+    /**
+     * Mark a run as cancelled so Python workers polling Redis between steps see
+     * the flag and abort. TTL should be at least as long as the worst-case run
+     * latency; the flag is harmless once the run row is in a terminal state.
+     */
+    void markRunCancelled(Long runId, long ttlSeconds);
+
+    /** Test helper: check whether a run id currently has a cancel flag set. */
+    boolean isRunCancelled(Long runId);
+
+    /** Clear the cancel flag — primarily for tests / admin reset. */
+    void clearRunCancelled(Long runId);
 }

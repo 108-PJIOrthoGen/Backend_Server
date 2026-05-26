@@ -22,6 +22,8 @@ public class RedisServiceImpl implements RedisService {
     private static final String USER_PERMISSIONS_KEY_PREFIX = "user_permissions:";
     private static final String SNAPSHOT_KEY_PREFIX = "snapshot:";
     private static final String RUN_DETAIL_KEY_PREFIX = "run_detail:";
+    private static final String ACTIVE_SESSION_KEY_PREFIX = "auth:active_session:";
+    private static final String CANCEL_RUN_KEY_PREFIX = "cancel:run:";
 
     @Override
     public void saveRefreshToken(String email, String refreshToken, long expirationTimeInSeconds) {
@@ -45,6 +47,22 @@ public class RedisServiceImpl implements RedisService {
     public boolean validateRefreshToken(String email, String refreshToken) {
         String storedToken = getRefreshToken(email);
         return Objects.equals(storedToken, refreshToken);
+    }
+
+    @Override
+    public void saveActiveSession(String email, String sessionId, long expirationTimeInSeconds) {
+        redisTemplate.opsForValue().set(ACTIVE_SESSION_KEY_PREFIX + email, sessionId,
+                expirationTimeInSeconds, TimeUnit.SECONDS);
+    }
+
+    @Override
+    public String getActiveSession(String email) {
+        return redisTemplate.opsForValue().get(ACTIVE_SESSION_KEY_PREFIX + email);
+    }
+
+    @Override
+    public void deleteActiveSession(String email) {
+        redisTemplate.delete(ACTIVE_SESSION_KEY_PREFIX + email);
     }
 
     @Override
@@ -125,6 +143,29 @@ public class RedisServiceImpl implements RedisService {
     @Override
     public void evictRunDetail(Long runId) {
         String key = RUN_DETAIL_KEY_PREFIX + runId;
+        redisTemplate.delete(key);
+    }
+
+    // ===== AI Run Cancellation Signaling =====
+
+    @Override
+    public void markRunCancelled(Long runId, long ttlSeconds) {
+        if (runId == null) return;
+        String key = CANCEL_RUN_KEY_PREFIX + runId;
+        redisTemplate.opsForValue().set(key, "1", ttlSeconds, TimeUnit.SECONDS);
+    }
+
+    @Override
+    public boolean isRunCancelled(Long runId) {
+        if (runId == null) return false;
+        String key = CANCEL_RUN_KEY_PREFIX + runId;
+        return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+    }
+
+    @Override
+    public void clearRunCancelled(Long runId) {
+        if (runId == null) return;
+        String key = CANCEL_RUN_KEY_PREFIX + runId;
         redisTemplate.delete(key);
     }
 }

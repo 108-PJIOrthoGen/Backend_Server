@@ -6,5 +6,6 @@ public enum RunStatus {
     SUCCESS,
     PARTIAL,
     FAILED,
-    TIMEOUT
+    TIMEOUT,
+    CANCELLED
 }

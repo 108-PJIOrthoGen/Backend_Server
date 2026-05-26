@@ -60,4 +60,7 @@ public class AiRecommendationRun extends AbstractEntity<Long> implements Seriali
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "data_completeness_json", columnDefinition = "jsonb")
     private java.util.Map<String, Object> dataCompletenessJson;
+
+    @Column(name = "created_by_user_id")
+    private Long createdByUserId;
 }
