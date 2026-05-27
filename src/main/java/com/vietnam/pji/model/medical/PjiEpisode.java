@@ -43,7 +43,7 @@ public class PjiEpisode extends AbstractEntity<Long> {
     @Column(name = "referral_source", length = 255)
     private String referralSource;
 
-    @Column(name = "result", length = 30)
+    @Column(name = "result", length = 200)
     private String result;
     @Column(name = "status", length = 100)
     private String status;

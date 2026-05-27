@@ -1,5 +1,7 @@
 package com.vietnam.pji.exception;
 
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.messaging.handler.annotation.support.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -16,6 +18,7 @@ import jakarta.validation.ConstraintViolationException;
 
 import java.util.Date;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -130,6 +133,43 @@ public class GlobalExceptionHandler {
         errorResponse.setStatus(CONFLICT.value());
         errorResponse.setError(CONFLICT.getReasonPhrase());
         errorResponse.setMessage(e.getMessage());
+
+        return errorResponse;
+    }
+
+    /**
+     * Handle database integrity violations (e.g. value too long for a column,
+     * unique / foreign-key / not-null constraint failures). Returns a clean
+     * client-facing message instead of leaking the raw SQL / JDBC driver text,
+     * while the underlying cause is logged server-side for debugging.
+     *
+     * @param e
+     * @param request
+     * @return errorResponse
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    @ResponseStatus(BAD_REQUEST)
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "400", description = "Bad Request", content = {
+                    @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, examples = @ExampleObject(name = "Handle exception when persisting data violates a database constraint", summary = "Handle Data Integrity Violation", value = """
+                            {
+                                 "timestamp": "2024-04-07T11:38:56.368+00:00",
+                                 "status": 400,
+                                 "path": "/api/v1/...",
+                                 "error": "Invalid Data",
+                                 "message": "Dữ liệu không hợp lệ hoặc vượt quá độ dài cho phép. Vui lòng kiểm tra lại thông tin."
+                             }
+                            """)) })
+    })
+    public ErrorResponse handleDataIntegrityViolationException(DataIntegrityViolationException e, WebRequest request) {
+        log.error("Data integrity violation on {}: {}", request.getDescription(false), e.getMessage());
+
+        ErrorResponse errorResponse = new ErrorResponse();
+        errorResponse.setTimestamp(new Date());
+        errorResponse.setPath(request.getDescription(false).replace("uri=", ""));
+        errorResponse.setStatus(BAD_REQUEST.value());
+        errorResponse.setError("Invalid Data");
+        errorResponse.setMessage("Dữ liệu không hợp lệ hoặc vượt quá độ dài cho phép. Vui lòng kiểm tra lại thông tin.");
 
         return errorResponse;
     }
