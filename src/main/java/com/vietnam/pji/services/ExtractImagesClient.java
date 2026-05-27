@@ -63,4 +63,20 @@ public class ExtractImagesClient {
             throw e;
         }
     }
+
+    /**
+     * Cancel a job upstream: the extract service marks it cancelled and deletes
+     * its uploaded files + any result. Idempotent on the upstream side.
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> cancel(String jobId) {
+        try {
+            ResponseEntity<Map> response = extractImagesRestTemplate.exchange(
+                    "/jobs/" + jobId, HttpMethod.DELETE, null, Map.class);
+            return response.getBody();
+        } catch (HttpStatusCodeException e) {
+            log.warn("Extract_Images cancel returned {} for job {}", e.getStatusCode(), jobId);
+            throw e;
+        }
+    }
 }

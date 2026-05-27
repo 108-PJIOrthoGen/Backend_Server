@@ -45,6 +45,13 @@ public class ExtractImagesController {
         return new ResponseData<>(HttpStatus.ACCEPTED.value(), "Extraction job queued", data);
     }
 
+    @PostMapping("/jobs/{jobId}/cancel")
+    @Operation(summary = "Cancel an extract-images job and delete its files")
+    public ResponseData<ExtractImageJobResponseDTO> cancelJob(@PathVariable String jobId) {
+        ExtractImageJobResponseDTO data = extractImagesService.cancelJob(jobId);
+        return new ResponseData<>(HttpStatus.OK.value(), "Extraction job cancelled", data);
+    }
+
     @GetMapping("/jobs/{jobId}")
     @Operation(summary = "Get extract-images job status and result")
     public ResponseData<ExtractImageJobResponseDTO> getJob(@PathVariable String jobId) {

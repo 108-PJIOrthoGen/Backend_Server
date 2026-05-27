@@ -2,6 +2,7 @@ package com.vietnam.pji.controller.agentic;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,7 +35,13 @@ public class AiRecommendationStreamController {
 
     @GetMapping(value = "/ai-recommendations/runs/{runId}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(summary = "Stream AI recommendation progress (thought logs) via SSE")
-    public SseEmitter streamRun(@PathVariable Long runId) {
+    public SseEmitter streamRun(@PathVariable Long runId, HttpServletResponse response) {
+        // Stop reverse proxies (nginx / Cloudflare) buffering the event stream —
+        // without this the thought-log frames arrive in one batch at the end
+        // (or not at all) in deployment, even though they stream fine locally.
+        response.setHeader("X-Accel-Buffering", "no");
+        response.setHeader("Cache-Control", "no-cache");
+
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
 
         // Replace any stale emitter for this runId (client reconnect after navigation).

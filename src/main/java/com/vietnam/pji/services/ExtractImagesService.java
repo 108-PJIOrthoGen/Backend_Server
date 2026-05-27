@@ -26,6 +26,15 @@ public class ExtractImagesService {
                 .build();
     }
 
+    public ExtractImageJobResponseDTO cancelJob(String jobId) {
+        log.info("Cancelling extract-images job {}", jobId);
+        Map<String, Object> upstream = extractImagesClient.cancel(jobId);
+        return ExtractImageJobResponseDTO.builder()
+                .jobId(asString(upstream, "job_id"))
+                .status(asString(upstream, "status"))
+                .build();
+    }
+
     @SuppressWarnings("unchecked")
     public ExtractImageJobResponseDTO getJob(String jobId) {
         Map<String, Object> upstream = extractImagesClient.getResult(jobId);

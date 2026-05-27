@@ -72,7 +72,13 @@ public class NotificationStreamController {
         }
 
         log.debug("Notification SSE client connected for userId={}", userId);
-        return ResponseEntity.ok(emitter);
+        // X-Accel-Buffering: no tells reverse proxies (nginx, and respected by
+        // Cloudflare) not to buffer the stream, so events reach the browser as
+        // they happen instead of arriving in one lump when the connection ends.
+        return ResponseEntity.ok()
+                .header("X-Accel-Buffering", "no")
+                .header("Cache-Control", "no-cache")
+                .body(emitter);
     }
 
     /**
