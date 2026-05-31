@@ -12,9 +12,10 @@ import com.vietnam.pji.repository.*;
 import com.vietnam.pji.repository.ai.AiRagCitationRepository;
 import com.vietnam.pji.repository.ai.AiRecommendationItemRepository;
 import com.vietnam.pji.repository.ai.AiRecommendationRunRepository;
-import com.vietnam.pji.services.NotificationService;
-import com.vietnam.pji.services.PendingLabTaskService;
-import com.vietnam.pji.services.RedisService;
+import com.vietnam.pji.services.feat.NotificationService;
+import com.vietnam.pji.services.feat.RedisService;
+import com.vietnam.pji.services.medical.PendingLabTaskService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;

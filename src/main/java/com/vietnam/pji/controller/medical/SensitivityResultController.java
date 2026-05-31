@@ -4,7 +4,8 @@ import com.vietnam.pji.dto.request.SensitivityResultRequestDTO;
 import com.vietnam.pji.dto.response.PaginationResultDTO;
 import com.vietnam.pji.dto.response.ResponseData;
 import com.vietnam.pji.model.medical.SensitivityResult;
-import com.vietnam.pji.services.SensitivityResultService;
+import com.vietnam.pji.services.medical.SensitivityResultService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -26,7 +27,8 @@ public class SensitivityResultController {
     @Operation(summary = "Create sensitivity result")
     @PostMapping("/sensitivity-results")
     @ResponseStatus(HttpStatus.CREATED)
-    public ResponseData<SensitivityResult> createSensitivityResult(@Valid @RequestBody SensitivityResultRequestDTO request) {
+    public ResponseData<SensitivityResult> createSensitivityResult(
+            @Valid @RequestBody SensitivityResultRequestDTO request) {
         return new ResponseData<>(HttpStatus.CREATED.value(), "Sensitivity result created successfully",
                 sensitivityResultService.create(request));
     }

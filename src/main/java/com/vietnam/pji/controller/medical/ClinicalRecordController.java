@@ -4,7 +4,8 @@ import com.vietnam.pji.dto.request.ClinicalRecordRequestDTO;
 import com.vietnam.pji.dto.response.PaginationResultDTO;
 import com.vietnam.pji.dto.response.ResponseData;
 import com.vietnam.pji.model.medical.ClinicalRecord;
-import com.vietnam.pji.services.ClinicalRecordService;
+import com.vietnam.pji.services.medical.ClinicalRecordService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;

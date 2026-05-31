@@ -4,7 +4,8 @@ import com.turkraft.springfilter.boot.Filter;
 import com.vietnam.pji.dto.response.PaginationResultDTO;
 import com.vietnam.pji.dto.response.ResponseData;
 import com.vietnam.pji.model.auth.Permission;
-import com.vietnam.pji.services.PermissionService;
+import com.vietnam.pji.services.auth.PermissionService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +29,8 @@ public class PermissionController {
         if (this.permissionService.alreadyExistPermission(data)) {
             throw new IllegalArgumentException("Đã tồn tại, hãy thử lại!");
         }
-        return new ResponseData<>(HttpStatus.CREATED.value(), "Permission created successfully", permissionService.create(data));
+        return new ResponseData<>(HttpStatus.CREATED.value(), "Permission created successfully",
+                permissionService.create(data));
     }
 
     @Operation(summary = "Update permission", description = "Updates an existing permission by id")
@@ -48,13 +50,15 @@ public class PermissionController {
     @Operation(summary = "Get permission by id")
     @GetMapping("/permission/{id}")
     public ResponseData<Permission> getById(@PathVariable long id) {
-        return new ResponseData<>(HttpStatus.OK.value(), "Fetch permission successfully", permissionService.getById(id));
+        return new ResponseData<>(HttpStatus.OK.value(), "Fetch permission successfully",
+                permissionService.getById(id));
     }
 
     @Operation(summary = "List permissions", description = "Paginated permission list with springfilter support")
     @GetMapping("/permissions")
     public ResponseData<PaginationResultDTO> handleFetchAllPermission(
             @Filter Specification<Permission> spec, Pageable pageable) {
-        return new ResponseData<>(HttpStatus.OK.value(), "Fetch permissions successfully", permissionService.fetchAll(spec, pageable));
+        return new ResponseData<>(HttpStatus.OK.value(), "Fetch permissions successfully",
+                permissionService.fetchAll(spec, pageable));
     }
 }

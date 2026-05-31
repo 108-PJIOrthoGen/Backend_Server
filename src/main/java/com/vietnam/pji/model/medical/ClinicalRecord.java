@@ -33,6 +33,12 @@ public class ClinicalRecord extends AbstractEntity<Long> {
     @Column(name = "blood_pressure", length = 20)
     private String bloodPressure;
 
+    @Column(name = "height_cm", precision = 5, scale = 2)
+    private BigDecimal heightCm; // chiều cao (cm)
+
+    @Column(name = "weight_kg", precision = 5, scale = 2)
+    private BigDecimal weightKg; // cân nặng (kg)
+
     @Column(name = "bmi", precision = 4, scale = 2)
     private BigDecimal bmi;
 

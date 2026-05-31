@@ -219,4 +219,37 @@ public class GlobalExceptionHandler {
 
         return errorResponse;
     }
+
+    /**
+     * Handle pessimistic-lock conflicts (e.g. another doctor is editing the
+     * same episode). Returns HTTP 423 LOCKED with holder + TTL so the client
+     * can surface a clear "resource busy" UX.
+     */
+    @ExceptionHandler(ResourceBusyException.class)
+    @ResponseStatus(LOCKED)
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "423", description = "Locked", content = {
+                    @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, examples = @ExampleObject(name = "423 Response", summary = "Handle exception when a resource is locked by another user", value = """
+                            {
+                              "timestamp": "2026-05-28T06:07:35.321+00:00",
+                              "status": 423,
+                              "path": "/api/v1/episodes/{id}/lock",
+                              "error": "Locked",
+                              "message": "Episode 42 is being edited by user 7",
+                              "heldBy": 7,
+                              "ttlSeconds": 142
+                            }
+                            """)) })
+    })
+    public LockedErrorResponse handleResourceBusyException(ResourceBusyException e, WebRequest req) {
+        LockedErrorResponse errorResponse = new LockedErrorResponse();
+        errorResponse.setTimestamp(new Date());
+        errorResponse.setPath(req.getDescription(false).replace("uri=", ""));
+        errorResponse.setStatus(LOCKED.value());
+        errorResponse.setError(LOCKED.getReasonPhrase());
+        errorResponse.setMessage(e.getMessage());
+        errorResponse.setHeldBy(e.getHeldBy());
+        errorResponse.setTtlSeconds(e.getTtlSeconds());
+        return errorResponse;
+    }
 }

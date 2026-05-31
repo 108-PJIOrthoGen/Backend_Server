@@ -4,7 +4,8 @@ import com.vietnam.pji.dto.request.ImageResultRequestDTO;
 import com.vietnam.pji.dto.response.ImageResultResponseDTO;
 import com.vietnam.pji.dto.response.PaginationResultDTO;
 import com.vietnam.pji.dto.response.ResponseData;
-import com.vietnam.pji.services.ImageResultService;
+import com.vietnam.pji.services.ocr.ImageResultService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;

@@ -3,7 +3,8 @@ package com.vietnam.pji.controller.medical;
 import com.vietnam.pji.dto.request.MedicalHistoryRequestDTO;
 import com.vietnam.pji.dto.response.ResponseData;
 import com.vietnam.pji.model.medical.MedicalHistory;
-import com.vietnam.pji.services.MedicalHistoryService;
+import com.vietnam.pji.services.medical.MedicalHistoryService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;

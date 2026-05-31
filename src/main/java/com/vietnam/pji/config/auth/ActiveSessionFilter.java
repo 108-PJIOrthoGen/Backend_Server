@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.vietnam.pji.services.RedisService;
+import com.vietnam.pji.services.feat.RedisService;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -76,8 +76,7 @@ public class ActiveSessionFilter extends OncePerRequestFilter {
                 "path", request.getRequestURI(),
                 "code", SESSION_REVOKED_CODE,
                 "error", "Session revoked",
-                "message", SESSION_REVOKED_MESSAGE
-        );
+                "message", SESSION_REVOKED_MESSAGE);
         objectMapper.writeValue(response.getWriter(), body);
     }
 }

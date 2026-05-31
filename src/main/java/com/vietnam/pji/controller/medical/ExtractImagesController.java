@@ -2,7 +2,8 @@ package com.vietnam.pji.controller.medical;
 
 import com.vietnam.pji.dto.response.ExtractImageJobResponseDTO;
 import com.vietnam.pji.dto.response.ResponseData;
-import com.vietnam.pji.services.ExtractImagesService;
+import com.vietnam.pji.services.ocr.ExtractImagesService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;

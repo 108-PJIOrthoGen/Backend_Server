@@ -21,7 +21,7 @@ import com.vietnam.pji.model.auth.Permission;
 import com.vietnam.pji.model.auth.Role;
 import com.vietnam.pji.repository.PermissionRepository;
 import com.vietnam.pji.repository.RoleRepository;
-import com.vietnam.pji.services.RedisService;
+import com.vietnam.pji.services.feat.RedisService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -85,7 +85,10 @@ public class PermissionSyncer implements CommandLineRunner {
         log.info(">>>>>>>>> PERMISSION SYNC END (inserted={})", inserted);
     }
 
-    /** All DB work happens inside a single transaction managed by TransactionTemplate. */
+    /**
+     * All DB work happens inside a single transaction managed by
+     * TransactionTemplate.
+     */
     private int doSync(Set<EndpointKey> declared) {
         // 2. Build lookup of permissions already in DB, keyed by (method, path).
         List<Permission> existing = permissionRepository.findAll();
@@ -142,8 +145,8 @@ public class PermissionSyncer implements CommandLineRunner {
      * permissions table. Returns the number of grants added.
      */
     private int reconcileAdminGrants(Set<EndpointKey> declared,
-                                     Map<EndpointKey, Permission> existingByKey,
-                                     List<Permission> savedNew) {
+            Map<EndpointKey, Permission> existingByKey,
+            List<Permission> savedNew) {
         Optional<Role> adminOpt = roleRepository.findByNameWithPermissions(ADMIN_ROLE);
         if (adminOpt.isEmpty()) {
             // Fresh-DB scenario: DatabaseInitializer creates the ADMIN role later

@@ -6,7 +6,8 @@ import com.vietnam.pji.dto.response.ResponseData;
 import com.vietnam.pji.dto.response.RoleDetailDTO;
 import com.vietnam.pji.model.auth.Role;
 import com.vietnam.pji.repository.RoleRepository;
-import com.vietnam.pji.services.RoleService;
+import com.vietnam.pji.services.auth.RoleService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -58,6 +59,7 @@ public class RoleController {
     @GetMapping("/roles")
     public ResponseData<PaginationResultDTO> handleFetchAllRole(
             @Filter Specification<Role> spec, Pageable pageable) {
-        return new ResponseData<>(HttpStatus.OK.value(), "Fetch roles successfully", roleService.fetchAll(spec, pageable));
+        return new ResponseData<>(HttpStatus.OK.value(), "Fetch roles successfully",
+                roleService.fetchAll(spec, pageable));
     }
 }

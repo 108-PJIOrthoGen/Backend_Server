@@ -5,7 +5,8 @@ import com.vietnam.pji.dto.request.PatientRequestDTO;
 import com.vietnam.pji.dto.response.PaginationResultDTO;
 import com.vietnam.pji.dto.response.ResponseData;
 import com.vietnam.pji.model.medical.Patient;
-import com.vietnam.pji.services.PatientService;
+import com.vietnam.pji.services.medical.PatientService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -29,13 +30,15 @@ public class PatientController {
     @PostMapping("/patients")
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseData<Patient> createPatient(@Valid @RequestBody PatientRequestDTO request) {
-        return new ResponseData<>(HttpStatus.CREATED.value(), "Patient created successfully", patientService.create(request));
+        return new ResponseData<>(HttpStatus.CREATED.value(), "Patient created successfully",
+                patientService.create(request));
     }
 
     @Operation(summary = "Update patient")
     @PutMapping("/patients/{id}")
     public ResponseData<Patient> updatePatient(@PathVariable Long id, @Valid @RequestBody PatientRequestDTO request) {
-        return new ResponseData<>(HttpStatus.OK.value(), "Patient updated successfully", patientService.update(id, request));
+        return new ResponseData<>(HttpStatus.OK.value(), "Patient updated successfully",
+                patientService.update(id, request));
     }
 
     @Operation(summary = "Get patient by id")
@@ -55,6 +58,7 @@ public class PatientController {
     @GetMapping("/patients")
     public ResponseData<PaginationResultDTO> getAllPatients(
             @Filter Specification<Patient> spec, Pageable pageable) {
-        return new ResponseData<>(HttpStatus.OK.value(), "Fetch patients successfully", patientService.getAll(spec, pageable));
+        return new ResponseData<>(HttpStatus.OK.value(), "Fetch patients successfully",
+                patientService.getAll(spec, pageable));
     }
 }

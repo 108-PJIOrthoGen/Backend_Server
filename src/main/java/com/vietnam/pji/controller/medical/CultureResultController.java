@@ -4,7 +4,8 @@ import com.vietnam.pji.dto.request.CultureResultRequestDTO;
 import com.vietnam.pji.dto.response.PaginationResultDTO;
 import com.vietnam.pji.dto.response.ResponseData;
 import com.vietnam.pji.model.medical.CultureResult;
-import com.vietnam.pji.services.CultureResultService;
+import com.vietnam.pji.services.medical.CultureResultService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;

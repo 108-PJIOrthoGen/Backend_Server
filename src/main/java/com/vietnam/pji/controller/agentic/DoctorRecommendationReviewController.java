@@ -3,7 +3,8 @@ package com.vietnam.pji.controller.agentic;
 import com.vietnam.pji.dto.request.DoctorRecommendationReviewRequestDTO;
 import com.vietnam.pji.dto.response.ResponseData;
 import com.vietnam.pji.model.agentic.DoctorRecommendationReview;
-import com.vietnam.pji.services.DoctorRecommendationReviewService;
+import com.vietnam.pji.services.doctor.DoctorRecommendationReviewService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;

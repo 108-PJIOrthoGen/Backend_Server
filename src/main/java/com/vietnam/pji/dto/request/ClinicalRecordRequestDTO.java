@@ -22,6 +22,10 @@ public class ClinicalRecordRequestDTO {
 
     private String bloodPressure;
 
+    private BigDecimal heightCm; // chiều cao (cm)
+
+    private BigDecimal weightKg; // cân nặng (kg)
+
     private BigDecimal bmi;
 
     private Boolean fever;

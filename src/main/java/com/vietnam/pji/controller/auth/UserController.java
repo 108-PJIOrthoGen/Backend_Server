@@ -6,7 +6,8 @@ import com.vietnam.pji.dto.response.PaginationResultDTO;
 import com.vietnam.pji.dto.response.ResponseData;
 import com.vietnam.pji.dto.response.UserDetailResponse;
 import com.vietnam.pji.model.auth.User;
-import com.vietnam.pji.services.UserService;
+import com.vietnam.pji.services.auth.UserService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -59,6 +60,7 @@ public class UserController {
     @GetMapping("/users")
     public ResponseData<PaginationResultDTO> getAllUsersInfo(
             @Filter Specification<User> spec, Pageable pageable) {
-        return new ResponseData<>(HttpStatus.OK.value(), "Fetch users successfully", userService.getAll(spec, pageable));
+        return new ResponseData<>(HttpStatus.OK.value(), "Fetch users successfully",
+                userService.getAll(spec, pageable));
     }
 }

@@ -2,7 +2,7 @@ package com.vietnam.pji.controller.agentic;
 
 import com.vietnam.pji.dto.response.ResponseData;
 import com.vietnam.pji.model.agentic.PendingLabTask;
-import com.vietnam.pji.services.PendingLabTaskService;
+import com.vietnam.pji.services.medical.PendingLabTaskService;
 import com.vietnam.pji.utils.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -47,15 +47,14 @@ public class PendingLabTaskController {
     @Operation(summary = "Quick-entry lab value", description = "Persists a lab value/unit pair and fulfills the pending task")
     @PostMapping("/pending-lab-tasks/{id}/quick-entry")
     public ResponseData<Void> quickEntry(@PathVariable Long id,
-                                         @RequestBody Map<String, Object> body) {
+            @RequestBody Map<String, Object> body) {
         Object value = body.get("value");
         String unit = body.get("unit") != null ? body.get("unit").toString() : null;
         pendingLabTaskService.fulfillByQuickEntry(id, value, unit);
         return new ResponseData<>(HttpStatus.OK.value(), "Lab value saved and task fulfilled");
     }
 
-    @Operation(summary = "Create tasks from completeness check",
-            description = "Bulk-creates pending lab tasks from AI completeness output for the given episode")
+    @Operation(summary = "Create tasks from completeness check", description = "Bulk-creates pending lab tasks from AI completeness output for the given episode")
     @PostMapping("/episodes/{episodeId}/pending-lab-tasks/from-completeness")
     @ResponseStatus(HttpStatus.CREATED)
     @SuppressWarnings("unchecked")
@@ -64,9 +63,11 @@ public class PendingLabTaskController {
             @RequestBody Map<String, Object> body) {
         Long userId = SecurityUtils.getCurrentUserId();
         Long patientId = body.get("patientId") != null
-                ? Long.valueOf(body.get("patientId").toString()) : null;
+                ? Long.valueOf(body.get("patientId").toString())
+                : null;
         Long runId = body.get("runId") != null
-                ? Long.valueOf(body.get("runId").toString()) : null;
+                ? Long.valueOf(body.get("runId").toString())
+                : null;
         List<Map<String, Object>> missingItems = (List<Map<String, Object>>) body.get("missingItems");
 
         pendingLabTaskService.createFromCompleteness(episodeId, patientId, userId, runId, missingItems);

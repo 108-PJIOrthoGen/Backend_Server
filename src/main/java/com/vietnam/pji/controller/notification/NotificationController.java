@@ -2,7 +2,7 @@ package com.vietnam.pji.controller.notification;
 
 import com.vietnam.pji.dto.response.NotificationResponseDTO;
 import com.vietnam.pji.dto.response.ResponseData;
-import com.vietnam.pji.services.NotificationService;
+import com.vietnam.pji.services.feat.NotificationService;
 import com.vietnam.pji.utils.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

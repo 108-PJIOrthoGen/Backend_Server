@@ -12,10 +12,10 @@ import com.vietnam.pji.exception.ResourceNotFoundException;
 import com.vietnam.pji.model.auth.User;
 import com.vietnam.pji.model.auth.UserTrustedDevice;
 import com.vietnam.pji.repository.UserTrustedDeviceRepository;
-import com.vietnam.pji.services.DeviceVerificationService;
-import com.vietnam.pji.services.PasswordRecoveryService;
-import com.vietnam.pji.services.RedisService;
-import com.vietnam.pji.services.UserService;
+import com.vietnam.pji.services.auth.DeviceVerificationService;
+import com.vietnam.pji.services.auth.PasswordRecoveryService;
+import com.vietnam.pji.services.auth.UserService;
+import com.vietnam.pji.services.feat.RedisService;
 import com.vietnam.pji.utils.SecurityUtils;
 import com.vietnam.pji.utils.mapper.RoleMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -66,11 +66,10 @@ public class AuthController {
     private final DeviceVerificationService deviceVerificationService;
     private final UserTrustedDeviceRepository userTrustedDeviceRepository;
 
-    @Operation(summary = "Login",
-            description = "Authenticate by username/password. If the request comes from a previously-verified device "
-                    + "(device-id cookie matches a non-expired trusted-devices row) tokens are issued immediately. "
-                    + "Otherwise the response carries requiresDeviceVerification=true plus a challengeId, no tokens "
-                    + "are issued, and an OTP is emailed — the client must then POST /auth/verify-device.")
+    @Operation(summary = "Login", description = "Authenticate by username/password. If the request comes from a previously-verified device "
+            + "(device-id cookie matches a non-expired trusted-devices row) tokens are issued immediately. "
+            + "Otherwise the response carries requiresDeviceVerification=true plus a challengeId, no tokens "
+            + "are issued, and an OTP is emailed — the client must then POST /auth/verify-device.")
     @PostMapping("/auth/login")
     public ResponseEntity<ResponseData<ResLoginDTO>> login(
             @Valid @RequestBody LoginDTO loginData,
@@ -123,7 +122,8 @@ public class AuthController {
         userTrustedDeviceRepository.findByUserIdAndDeviceId(realUser.getId(), deviceIdCookie)
                 .ifPresent(device -> {
                     device.setLastSeenAt(Instant.now());
-                    device.setExpiresAt(Instant.now().plus(deviceVerificationService.trustedDeviceDays(), ChronoUnit.DAYS));
+                    device.setExpiresAt(
+                            Instant.now().plus(deviceVerificationService.trustedDeviceDays(), ChronoUnit.DAYS));
                     device.setIpAddress(clientIp(request));
                     device.setDeviceLabel(userAgent(request));
                     userTrustedDeviceRepository.save(device);
@@ -135,10 +135,9 @@ public class AuthController {
                 .body(new ResponseData<>(HttpStatus.OK.value(), "Login successful", resLoginDTO));
     }
 
-    @Operation(summary = "Verify new device",
-            description = "Confirms the email OTP issued during a new-device login attempt. On success the candidate "
-                    + "device is added to the user's trusted-devices list, the previous active session is revoked, "
-                    + "fresh tokens are issued, and both the refresh-token and device-id cookies are set.")
+    @Operation(summary = "Verify new device", description = "Confirms the email OTP issued during a new-device login attempt. On success the candidate "
+            + "device is added to the user's trusted-devices list, the previous active session is revoked, "
+            + "fresh tokens are issued, and both the refresh-token and device-id cookies are set.")
     @PostMapping("/auth/verify-device")
     public ResponseEntity<ResponseData<ResLoginDTO>> verifyDevice(
             @Valid @RequestBody VerifyDeviceRequestDTO data,
@@ -175,7 +174,8 @@ public class AuthController {
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, refreshTokenCookie(refreshToken).toString())
-                .header(HttpHeaders.SET_COOKIE, deviceCookie(challenge.candidateDeviceId(), deviceCookieMaxAge).toString())
+                .header(HttpHeaders.SET_COOKIE,
+                        deviceCookie(challenge.candidateDeviceId(), deviceCookieMaxAge).toString())
                 .body(new ResponseData<>(HttpStatus.OK.value(), "Xác thực thiết bị thành công", resLoginDTO));
     }
 
@@ -217,9 +217,8 @@ public class AuthController {
         return new ResponseData<>(HttpStatus.OK.value(), "Fetch account successfully", info);
     }
 
-    @Operation(summary = "Update own profile",
-            description = "Self-service update of the authenticated user's name, phone, department, avatar, "
-                    + "and password. Role, status, and email are intentionally not editable through this endpoint.")
+    @Operation(summary = "Update own profile", description = "Self-service update of the authenticated user's name, phone, department, avatar, "
+            + "and password. Role, status, and email are intentionally not editable through this endpoint.")
     @PutMapping("/auth/account")
     public ResponseData<ResLoginDTO.UserData> updateOwnProfile(@Valid @RequestBody UpdateOwnProfileRequestDTO data) {
         String emailLogin = SecurityUtils.getCurrentUserLogin().orElseThrow(
@@ -327,7 +326,10 @@ public class AuthController {
         return resLoginDTO;
     }
 
-    /** Mint access + refresh tokens with the given sid, persist active session in Redis + DB. */
+    /**
+     * Mint access + refresh tokens with the given sid, persist active session in
+     * Redis + DB.
+     */
     private void issueTokensAndPersistSession(User user, ResLoginDTO resLoginDTO, String sessionId) {
         String accessToken = securityUtils.generateAccessToken(user.getEmail(), resLoginDTO, sessionId);
         resLoginDTO.setAccessToken(accessToken);
@@ -361,7 +363,10 @@ public class AuthController {
                 .build();
     }
 
-    /** Re-issue the same device-id cookie value with a fresh 30-day expiry on trusted-device login. */
+    /**
+     * Re-issue the same device-id cookie value with a fresh 30-day expiry on
+     * trusted-device login.
+     */
     private ResponseCookie deviceIdCookie(String value) {
         return deviceCookie(value, (long) deviceVerificationService.trustedDeviceDays() * 24L * 60L * 60L);
     }

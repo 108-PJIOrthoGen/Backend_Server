@@ -4,7 +4,8 @@ import com.vietnam.pji.constant.TriggerType;
 import com.vietnam.pji.dto.response.AiRecommendationRunDetailDTO;
 import com.vietnam.pji.dto.response.PaginationResultDTO;
 import com.vietnam.pji.dto.response.ResponseData;
-import com.vietnam.pji.services.AiRecommendationService;
+import com.vietnam.pji.services.agent.AiRecommendationService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
