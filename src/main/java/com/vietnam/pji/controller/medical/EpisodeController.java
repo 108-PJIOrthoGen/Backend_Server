@@ -1,10 +1,13 @@
 package com.vietnam.pji.controller.medical;
 
 import com.turkraft.springfilter.boot.Filter;
+import com.vietnam.pji.dto.request.EpisodeFullRequestDTO;
 import com.vietnam.pji.dto.request.EpisodeRequestDTO;
+import com.vietnam.pji.dto.response.EpisodeFullResponseDTO;
 import com.vietnam.pji.dto.response.PaginationResultDTO;
 import com.vietnam.pji.dto.response.ResponseData;
 import com.vietnam.pji.model.medical.PjiEpisode;
+import com.vietnam.pji.services.episode.EpisodeAggregateService;
 import com.vietnam.pji.services.episode.EpisodeService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,6 +28,7 @@ import org.springframework.web.bind.annotation.*;
 public class EpisodeController {
 
     private final EpisodeService episodeService;
+    private final EpisodeAggregateService episodeAggregateService;
 
     @Operation(summary = "Create episode")
     @PostMapping("/episodes")
@@ -69,5 +73,32 @@ public class EpisodeController {
             @PathVariable Long patientId, Pageable pageable) {
         return new ResponseData<>(HttpStatus.OK.value(), "Fetch patient episodes successfully",
                 episodeService.getByPatient(patientId, pageable));
+    }
+
+    @Operation(summary = "Get full episode aggregate",
+            description = "Episode plus medical history, clinical record, surgeries, labs, images and cultures/sensitivities — one transactional read")
+    @GetMapping("/episodes/{id}/full")
+    public ResponseData<EpisodeFullResponseDTO> getEpisodeFull(@PathVariable Long id) {
+        return new ResponseData<>(HttpStatus.OK.value(), "Fetch full episode successfully",
+                episodeAggregateService.getFull(id));
+    }
+
+    @Operation(summary = "Create full episode aggregate",
+            description = "Atomically create an episode and all its child records in one transaction")
+    @PostMapping("/episodes/full")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ResponseData<EpisodeFullResponseDTO> createEpisodeFull(
+            @Valid @RequestBody EpisodeFullRequestDTO request) {
+        return new ResponseData<>(HttpStatus.CREATED.value(), "Episode created successfully",
+                episodeAggregateService.saveFull(null, request));
+    }
+
+    @Operation(summary = "Update full episode aggregate",
+            description = "Atomically upsert/diff an episode and all its child records in one transaction")
+    @PutMapping("/episodes/{id}/full")
+    public ResponseData<EpisodeFullResponseDTO> updateEpisodeFull(
+            @PathVariable Long id, @Valid @RequestBody EpisodeFullRequestDTO request) {
+        return new ResponseData<>(HttpStatus.OK.value(), "Episode updated successfully",
+                episodeAggregateService.saveFull(id, request));
     }
 }
