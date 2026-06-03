@@ -73,6 +73,7 @@ public class EpisodeAggregateServiceImpl implements EpisodeAggregateService {
     private final SensitivityResultRepository sensitivityResultRepository;
 
     private final RedisService redisService;
+    private final com.vietnam.pji.services.medical.PendingLabTaskService pendingLabTaskService;
 
     /** Generous cap — an episode never has anywhere near this many children. */
     private static final Pageable ALL = PageRequest.of(0, 1000);
@@ -150,6 +151,11 @@ public class EpisodeAggregateServiceImpl implements EpisodeAggregateService {
 
         // 7. Cultures + nested sensitivities (diff)
         syncCultures(epId, nullSafe(dto.getCultures()));
+
+        // Lab tasks auto-fulfil inside labResultService.create/update (step 4).
+        // Resolve the clinical/culture pending tasks here now that the clinical
+        // record, allergies, cultures and surgeries have all been persisted.
+        pendingLabTaskService.autoFulfillClinicalForEpisode(epId);
 
         // Bust the AI snapshot cache so the next recommendation sees fresh data.
         redisService.evictSnapshotCache(epId);

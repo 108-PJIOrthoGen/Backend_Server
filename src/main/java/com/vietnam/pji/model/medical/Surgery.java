@@ -20,10 +20,10 @@ public class Surgery extends AbstractEntity<Long> {
     @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private PjiEpisode episode;
 
-    @Column(name = "surgery_date", nullable = false)
+    @Column(name = "surgery_date")
     private LocalDate surgeryDate;
 
-    @Column(name = "surgery_type", nullable = false, length = 255)
+    @Column(name = "surgery_type", length = 255)
     private String surgeryType;
 
     @Column(name = "findings", columnDefinition = "TEXT")
