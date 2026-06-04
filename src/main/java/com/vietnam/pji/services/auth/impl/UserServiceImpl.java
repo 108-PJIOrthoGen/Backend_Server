@@ -1,5 +1,6 @@
 package com.vietnam.pji.services.auth.impl;
 
+import com.vietnam.pji.dto.request.ChangePasswordRequestDTO;
 import com.vietnam.pji.dto.request.UpdateOwnProfileRequestDTO;
 import com.vietnam.pji.dto.request.UserRequestDTO;
 import com.vietnam.pji.dto.response.PaginationResultDTO;
@@ -147,15 +148,28 @@ public class UserServiceImpl implements UserService {
         if (data.getAvatar() != null) {
             user.setAvatar(data.getAvatar().isBlank() ? null : data.getAvatar());
         }
-        if (data.getNewPassword() != null && !data.getNewPassword().isBlank()) {
-            if (data.getCurrentPassword() == null
-                    || !passwordEncoder.matches(data.getCurrentPassword(), user.getPassword())) {
-                throw new InvalidDataException("Mật khẩu hiện tại không đúng.");
-            }
-            user.setPassword(passwordEncoder.encode(data.getNewPassword()));
-        }
         User saved = userRepository.save(user);
         redisService.evictUserPermissions(saved.getEmail());
         return saved;
+    }
+
+    @Override
+    public void changeOwnPassword(String email, ChangePasswordRequestDTO data) {
+        User user = userRepository.findByEmail(email);
+        if (user == null) {
+            throw new ResourceNotFoundException("User not found");
+        }
+        if (!passwordEncoder.matches(data.getCurrentPassword(), user.getPassword())) {
+            throw new InvalidDataException("Mật khẩu hiện tại không đúng.");
+        }
+        if (passwordEncoder.matches(data.getNewPassword(), user.getPassword())) {
+            throw new InvalidDataException("Mật khẩu mới phải khác mật khẩu hiện tại.");
+        }
+        user.setPassword(passwordEncoder.encode(data.getNewPassword()));
+        // Revoke mọi phiên đăng nhập sau khi đổi mật khẩu — cùng pattern với
+        // PasswordRecoveryServiceImpl.resetPassword.
+        user.setRefreshToken(null);
+        userRepository.save(user);
+        redisService.deleteRefreshToken(user.getEmail());
     }
 }

@@ -45,6 +45,24 @@ public class PendingLabTask extends AbstractEntity<Long> {
     @Column(name = "message", columnDefinition = "TEXT")
     private String message;
 
+    /**
+     * Render metadata mirrored from the Rag_Agentic completeness output so the
+     * in-episode follow-up tab can pick the right entry widget without a second
+     * lookup. {@code inputType} is one of lab|clinical|culture; the remaining
+     * three are only meaningful for {@code inputType == "lab"}.
+     */
+    @Column(name = "input_type", length = 20)
+    private String inputType;
+
+    @Column(name = "section", length = 20)
+    private String section;
+
+    @Column(name = "unit", length = 40)
+    private String unit;
+
+    @Column(name = "normal_range", length = 60)
+    private String normalRange;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private PendingLabTaskStatus status;

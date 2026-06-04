@@ -22,4 +22,12 @@ public interface PendingLabTaskService {
             List<Map<String, Object>> hematologyTests,
             List<Map<String, Object>> fluidAnalysis,
             Map<String, Object> biochemicalData);
+
+    /**
+     * Fulfil pending clinical/culture tasks (sinus tract, infection type,
+     * implant stability, allergies, histology, culture count) once the episode
+     * aggregate save has persisted the relevant records. Lab tasks are handled
+     * separately by {@link #autoFulfillForEpisode}.
+     */
+    void autoFulfillClinicalForEpisode(Long episodeId);
 }

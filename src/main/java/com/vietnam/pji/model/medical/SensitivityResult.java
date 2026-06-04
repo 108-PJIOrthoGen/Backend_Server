@@ -23,7 +23,7 @@ public class SensitivityResult extends AbstractEntity<Long> {
     @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private CultureResult culture;
 
-    @Column(name = "antibiotic_name", nullable = false, length = 100)
+    @Column(name = "antibiotic_name", length = 100)
     private String antibioticName;
 
     @Column(name = "mic_value", length = 20)

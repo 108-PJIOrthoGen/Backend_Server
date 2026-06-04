@@ -28,6 +28,11 @@ public class PendingLabTaskServiceImpl implements PendingLabTaskService {
     private final PendingLabTaskRepository pendingLabTaskRepository;
     private final LabResultRepository labResultRepository;
     private final EpisodeRepository episodeRepository;
+    private final com.vietnam.pji.repository.ai.AiRecommendationRunRepository aiRecommendationRunRepository;
+    private final com.vietnam.pji.repository.medical.ClinicalRecordRepository clinicalRecordRepository;
+    private final com.vietnam.pji.repository.MedicalHistoryRepository medicalHistoryRepository;
+    private final com.vietnam.pji.repository.medical.CultureResultRepository cultureResultRepository;
+    private final com.vietnam.pji.repository.SurgeryRepository surgeryRepository;
 
     /**
      * Maps completeness field keys from Python's completeness.py to the JSONB
@@ -80,11 +85,61 @@ public class PendingLabTaskServiceImpl implements PendingLabTaskService {
         return new LabFieldSpec("hematology", "ht_extra_" + slug, field, "", "");
     }
 
+    /**
+     * Canonical lowercase biochemical_data key for fields stored in that
+     * section, so the frontend's id mapping (creatinine → bc_6, alt → bc_9)
+     * resolves and the Rag_Agentic completeness check finds the value.
+     */
+    private static final Map<String, String> FIELD_TO_BIOCHEM_KEY = Map.of(
+            "renal_function", "creatinine",
+            "liver_function", "alt");
+
+    /**
+     * Diacritic-insensitive name aliases used by {@link #autoFulfillForEpisode}
+     * to recognise a clinician-entered row as satisfying a pending field. Kept
+     * in sync with the Rag_Agentic completeness aliases and the frontend form
+     * row names. Matched against normalized row id and row name.
+     */
+    private static final Map<String, Set<String>> FIELD_NAME_ALIASES = Map.ofEntries(
+            Map.entry("serum_CRP", Set.of("htextracrp", "crp")),
+            Map.entry("serum_ESR", Set.of("ht7", "maulang", "esr", "tocdomaulang")),
+            Map.entry("serum_D_Dimer", Set.of("ht17", "ddimer")),
+            Map.entry("serum_IL6", Set.of("ht18", "il6")),
+            Map.entry("synovial_WBC", Set.of("fa3", "synovialwbc", "bachcaudich")),
+            Map.entry("synovial_PMN", Set.of("fa6", "synovialpmn", "pmndich")),
+            Map.entry("synovial_alpha_defensin",
+                    Set.of("faextraalphadefensin", "ht19", "alphadefensin")),
+            Map.entry("synovial_LE",
+                    Set.of("faextraleukocyteesterase", "ht15", "leukocyteesterase")),
+            Map.entry("renal_function", Set.of("bc6", "creatinin", "creatinine", "egfr")),
+            Map.entry("liver_function",
+                    Set.of("bc8", "bc9", "alt", "ast", "hoatdoalt", "hoatdoast")));
+
+    /** Lowercase, strip Vietnamese diacritics, drop non-alphanumerics. */
+    private static String normalizeToken(Object value) {
+        if (value == null)
+            return "";
+        String s = java.text.Normalizer.normalize(value.toString(), java.text.Normalizer.Form.NFD)
+                .toLowerCase()
+                .replace("đ", "d");
+        StringBuilder sb = new StringBuilder();
+        for (char c : s.toCharArray()) {
+            if (Character.isLetterOrDigit(c) && c < 128) {
+                sb.append(c);
+            }
+        }
+        return sb.toString();
+    }
+
     @Override
     @Transactional(readOnly = true)
     public List<PendingLabTask> getMyPendingTasks(Long userId) {
+        // Return PENDING + FULFILLED (not DISMISSED) so the tooltip and the
+        // in-episode tab can show per-episode progress, not just the open items.
         List<PendingLabTask> tasks = pendingLabTaskRepository
-                .findByAssignedToUserIdAndStatusOrderByCreatedAtDesc(userId, PendingLabTaskStatus.PENDING);
+                .findByAssignedToUserIdAndStatusInOrderByCreatedAtDesc(
+                        userId,
+                        List.of(PendingLabTaskStatus.PENDING, PendingLabTaskStatus.FULFILLED));
         tasks.forEach(t -> {
             Hibernate.initialize(t.getEpisode());
             if (t.getEpisode() != null) {
@@ -105,7 +160,11 @@ public class PendingLabTaskServiceImpl implements PendingLabTaskService {
     @Override
     @Transactional(readOnly = true)
     public long getMyPendingCount(Long userId) {
-        return pendingLabTaskRepository.countByAssignedToUserIdAndStatus(userId, PendingLabTaskStatus.PENDING);
+        // Count distinct episodes still carrying pending work — the badge tracks
+        // episodes, not individual fields, so it only drops when an episode is
+        // fully resolved.
+        return pendingLabTaskRepository.countDistinctEpisodesByAssignedToUserIdAndStatus(
+                userId, PendingLabTaskStatus.PENDING);
     }
 
     @Override
@@ -165,17 +224,22 @@ public class PendingLabTaskServiceImpl implements PendingLabTaskService {
                 Map<String, Object> data = labResult.getBiochemicalData();
                 if (data == null)
                     data = new LinkedHashMap<>();
-                data.put(spec.name(), testEntry);
+                // Store under the canonical lowercase key ({value, unit} shape)
+                // so the frontend id-mapping and the AI completeness check both
+                // resolve it; falls back to the spec name for unmapped fields.
+                String biochemKey = FIELD_TO_BIOCHEM_KEY.getOrDefault(field, spec.name());
+                Map<String, Object> biochemEntry = new LinkedHashMap<>();
+                biochemEntry.put("value", value);
+                biochemEntry.put("unit", unit != null ? unit : spec.defaultUnit());
+                data.put(biochemKey, biochemEntry);
                 labResult.setBiochemicalData(data);
             }
         }
 
         LabResult saved = labResultRepository.save(labResult);
 
-        // Mark task as fulfilled
-        task.setStatus(PendingLabTaskStatus.FULFILLED);
-        task.setFulfilledLabResult(saved);
-        pendingLabTaskRepository.save(task);
+        // Mark task as fulfilled (drops any stale FULFILLED row for the field)
+        markFulfilled(task, saved);
 
         log.info("Quick-entry fulfilled: taskId={}, field={}, episodeId={}", taskId, field, episodeId);
     }
@@ -195,12 +259,25 @@ public class PendingLabTaskServiceImpl implements PendingLabTaskService {
             String category = (String) item.get("category");
             String importance = (String) item.get("importance");
             String message = (String) item.get("message");
+            // Render metadata emitted by the Rag_Agentic completeness check.
+            String inputType = (String) item.get("input_type");
+            String section = (String) item.get("section");
+            String unit = (String) item.get("unit");
+            String normalRange = (String) item.get("normal_range");
 
             Optional<PendingLabTask> existing = pendingLabTaskRepository
                     .findByEpisodeIdAndFieldAndStatus(episodeId, field, PendingLabTaskStatus.PENDING);
             if (existing.isPresent()) {
+                PendingLabTask task = existing.get();
+                // Backfill render metadata on tasks the async worker created
+                // before this richer payload was available.
+                if (task.getInputType() == null && inputType != null) {
+                    task.setInputType(inputType);
+                    task.setSection(section);
+                    task.setUnit(unit);
+                    task.setNormalRange(normalRange);
+                }
                 if (userId != null) {
-                    PendingLabTask task = existing.get();
                     // Async worker can create unassigned tasks before the user clicks save.
                     // Claim those tasks so they show up in the current user's drawer.
                     if (task.getAssignedToUserId() == null) {
@@ -209,8 +286,8 @@ public class PendingLabTaskServiceImpl implements PendingLabTaskService {
                     if (task.getCreatedFromRunId() == null) {
                         task.setCreatedFromRunId(runId);
                     }
-                    pendingLabTaskRepository.save(task);
                 }
+                pendingLabTaskRepository.save(task);
                 continue;
             }
 
@@ -222,11 +299,27 @@ public class PendingLabTaskServiceImpl implements PendingLabTaskService {
                     .category(category)
                     .importance(importance)
                     .message(message)
+                    .inputType(inputType)
+                    .section(section)
+                    .unit(unit)
+                    .normalRange(normalRange)
                     .status(PendingLabTaskStatus.PENDING)
                     .createdFromRunId(runId)
                     .build();
 
             pendingLabTaskRepository.save(task);
+        }
+
+        // A non-null userId means this is the doctor's explicit "Lưu nhắc nhở"
+        // action (the async worker passes null) — persist the saved marker so
+        // the button stays disabled across reloads/devices.
+        if (userId != null && runId != null) {
+            aiRecommendationRunRepository.findById(runId).ifPresent(run -> {
+                if (!run.isPendingTasksSaved()) {
+                    run.setPendingTasksSaved(true);
+                    aiRecommendationRunRepository.save(run);
+                }
+            });
         }
 
         log.info("Created pending tasks from completeness: episodeId={}, runId={}, count={}",
@@ -245,19 +338,141 @@ public class PendingLabTaskServiceImpl implements PendingLabTaskService {
         if (pendingTasks.isEmpty())
             return;
 
-        Set<String> presentFields = extractPresentFields(hematologyTests, fluidAnalysis, biochemicalData);
+        Set<String> presentTokens = extractPresentFields(hematologyTests, fluidAnalysis, biochemicalData);
 
         LabResult labResult = labResultRepository.findById(labResultId).orElse(null);
 
         for (PendingLabTask task : pendingTasks) {
-            LabFieldSpec spec = FIELD_TO_LAB_MAPPING.get(task.getField());
-            if (spec != null && presentFields.contains(spec.name())) {
-                task.setStatus(PendingLabTaskStatus.FULFILLED);
-                task.setFulfilledLabResult(labResult);
-                pendingLabTaskRepository.save(task);
+            if (isFieldPresent(task.getField(), presentTokens)) {
+                markFulfilled(task, labResult);
                 log.info("Auto-fulfilled pending task: id={}, field={}", task.getId(), task.getField());
             }
         }
+    }
+
+    /**
+     * True when a clinician-entered datum (captured as a normalized token from
+     * a row id/name or a biochemical key) satisfies the given completeness
+     * field. Matches the canonical row id and the diacritic-insensitive name
+     * aliases shared with the Rag_Agentic completeness check.
+     */
+    private boolean isFieldPresent(String field, Set<String> presentTokens) {
+        if (field == null || presentTokens.isEmpty()) {
+            return false;
+        }
+        LabFieldSpec spec = FIELD_TO_LAB_MAPPING.get(field);
+        if (spec != null) {
+            if (presentTokens.contains(normalizeToken(spec.id()))
+                    || presentTokens.contains(normalizeToken(spec.name()))) {
+                return true;
+            }
+        }
+        Set<String> aliases = FIELD_NAME_ALIASES.get(field);
+        if (aliases == null) {
+            return false;
+        }
+        return aliases.stream().anyMatch(alias ->
+                presentTokens.stream().anyMatch(token -> token.contains(alias)));
+    }
+
+    @Override
+    @Transactional
+    public void autoFulfillClinicalForEpisode(Long episodeId) {
+        List<PendingLabTask> pendingTasks = pendingLabTaskRepository
+                .findByEpisodeIdAndStatus(episodeId, PendingLabTaskStatus.PENDING);
+        if (pendingTasks.isEmpty())
+            return;
+
+        // Only load what the clinical/culture checks below actually need.
+        boolean needsClinical = pendingTasks.stream().anyMatch(t -> {
+            String f = t.getField();
+            return "sinus_tract".equals(f) || "infection_type".equals(f)
+                    || "implant_stability".equals(f);
+        });
+        com.vietnam.pji.model.medical.ClinicalRecord cr = needsClinical
+                ? clinicalRecordRepository.findFirstByEpisodeIdOrderByCreatedAtDesc(episodeId).orElse(null)
+                : null;
+        com.vietnam.pji.model.medical.MedicalHistory mh = pendingTasks.stream()
+                .anyMatch(t -> "allergies".equals(t.getField()))
+                        ? medicalHistoryRepository.findByEpisodeId(episodeId).orElse(null)
+                        : null;
+        List<com.vietnam.pji.model.medical.CultureResult> cultures = pendingTasks.stream()
+                .anyMatch(t -> "culture_results".equals(t.getField()))
+                        ? cultureResultRepository.findByEpisodeIdOrderByCreatedAtDesc(episodeId)
+                        : List.of();
+        List<com.vietnam.pji.model.medical.Surgery> surgeries = pendingTasks.stream()
+                .anyMatch(t -> "positive_histology".equals(t.getField()))
+                        ? surgeryRepository.findByEpisodeIdOrderBySurgeryDateAsc(episodeId)
+                        : List.of();
+
+        for (PendingLabTask task : pendingTasks) {
+            if (isClinicalFieldSatisfied(task.getField(), cr, mh, cultures, surgeries)) {
+                markFulfilled(task, null);
+                log.info("Auto-fulfilled clinical pending task: id={}, field={}",
+                        task.getId(), task.getField());
+            }
+        }
+    }
+
+    private boolean isClinicalFieldSatisfied(String field,
+            com.vietnam.pji.model.medical.ClinicalRecord cr,
+            com.vietnam.pji.model.medical.MedicalHistory mh,
+            List<com.vietnam.pji.model.medical.CultureResult> cultures,
+            List<com.vietnam.pji.model.medical.Surgery> surgeries) {
+        if (field == null)
+            return false;
+        return switch (field) {
+            case "sinus_tract" -> cr != null && cr.getSinusTract() != null;
+            case "infection_type" -> cr != null
+                    && cr.getSuspectedInfectionType() != null
+                    && cr.getSuspectedInfectionType() != com.vietnam.pji.constant.InfectionType.UNKNOWN;
+            case "implant_stability" -> cr != null
+                    && cr.getImplantStability() != null
+                    && cr.getImplantStability() != com.vietnam.pji.constant.ImplantType.UNKNOWN;
+            case "allergies" -> mh != null && mh.getIsAllergy() != null;
+            case "culture_results" -> cultures != null && cultures.size() >= 2;
+            case "positive_histology" -> hasHistologyFindings(surgeries);
+            default -> false;
+        };
+    }
+
+    private boolean hasHistologyFindings(List<com.vietnam.pji.model.medical.Surgery> surgeries) {
+        if (surgeries == null)
+            return false;
+        for (com.vietnam.pji.model.medical.Surgery s : surgeries) {
+            String f = s.getFindings() == null ? "" : s.getFindings().toLowerCase();
+            if (f.contains("giai phau benh") || f.contains("giải phẫu bệnh")
+                    || f.contains("sinh thiet") || f.contains("sinh thiết")
+                    || f.contains("histolog") || f.contains("patholog")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Transition a task to FULFILLED, first removing any stale FULFILLED row for
+     * the same (episode, field). The unique constraint
+     * {@code uq_pending_episode_field(episode_id, field, status)} otherwise
+     * rejects a second FULFILLED row when an earlier run already fulfilled the
+     * field. We delete-then-flush before the UPDATE because Hibernate would
+     * otherwise order the UPDATE ahead of the DELETE and still collide.
+     */
+    private void markFulfilled(PendingLabTask task, LabResult labResult) {
+        Long episodeId = task.getEpisode().getId();
+        pendingLabTaskRepository
+                .findByEpisodeIdAndFieldAndStatus(episodeId, task.getField(),
+                        PendingLabTaskStatus.FULFILLED)
+                .filter(existing -> !existing.getId().equals(task.getId()))
+                .ifPresent(existing -> {
+                    pendingLabTaskRepository.delete(existing);
+                    pendingLabTaskRepository.flush();
+                });
+        task.setStatus(PendingLabTaskStatus.FULFILLED);
+        if (labResult != null) {
+            task.setFulfilledLabResult(labResult);
+        }
+        pendingLabTaskRepository.save(task);
     }
 
     private LabResult getOrCreateLatestLabResult(Long episodeId) {
@@ -279,34 +494,59 @@ public class PendingLabTaskServiceImpl implements PendingLabTaskService {
         return labResultRepository.save(newLab);
     }
 
+    /**
+     * Collect normalized tokens (row id, row name, biochemical key) for every
+     * filled lab datum, so {@link #isFieldPresent} can match against canonical
+     * ids and diacritic-insensitive name aliases regardless of how the row was
+     * labelled in the form.
+     */
     private Set<String> extractPresentFields(List<Map<String, Object>> hematologyTests,
             List<Map<String, Object>> fluidAnalysis,
             Map<String, Object> biochemicalData) {
-        Set<String> fields = new HashSet<>();
-        if (hematologyTests != null) {
-            for (Map<String, Object> test : hematologyTests) {
-                Object name = test.get("name");
-                if (name != null && test.get("value") != null) {
-                    fields.add(name.toString());
-                }
-            }
-        }
-        if (fluidAnalysis != null) {
-            for (Map<String, Object> test : fluidAnalysis) {
-                Object name = test.get("name");
-                if (name != null && test.get("value") != null) {
-                    fields.add(name.toString());
-                }
-            }
-        }
+        Set<String> tokens = new HashSet<>();
+        addRowTokens(tokens, hematologyTests);
+        addRowTokens(tokens, fluidAnalysis);
         if (biochemicalData != null) {
             for (Map.Entry<String, Object> entry : biochemicalData.entrySet()) {
-                if (entry.getValue() != null) {
-                    fields.add(entry.getKey());
+                if (isBiochemValueFilled(entry.getValue())) {
+                    String tok = normalizeToken(entry.getKey());
+                    if (!tok.isEmpty()) {
+                        tokens.add(tok);
+                    }
                 }
             }
         }
-        return fields;
+        return tokens;
+    }
+
+    private void addRowTokens(Set<String> tokens, List<Map<String, Object>> rows) {
+        if (rows == null) {
+            return;
+        }
+        for (Map<String, Object> row : rows) {
+            Object value = row.get("value");
+            if (value == null || value.toString().isBlank()) {
+                continue;
+            }
+            for (String key : List.of("id", "name")) {
+                String tok = normalizeToken(row.get(key));
+                if (!tok.isEmpty()) {
+                    tokens.add(tok);
+                }
+            }
+        }
+    }
+
+    /** A biochemical entry counts as filled unless its {value} wrapper is empty. */
+    private boolean isBiochemValueFilled(Object value) {
+        if (value == null) {
+            return false;
+        }
+        if (value instanceof Map<?, ?> map && map.containsKey("value")) {
+            Object inner = map.get("value");
+            return inner != null && !inner.toString().isBlank();
+        }
+        return !value.toString().isBlank();
     }
 
     private void removeExisting(List<Map<String, Object>> tests, String id, String name) {

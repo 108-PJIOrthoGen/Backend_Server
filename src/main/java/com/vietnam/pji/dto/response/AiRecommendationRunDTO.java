@@ -34,6 +34,7 @@ public class AiRecommendationRunDTO implements Serializable {
     private String errorMessage;
     private String requestId;
     private Map<String, Object> dataCompletenessJson;
+    private boolean pendingTasksSaved;
     private Date createdAt;
     private Date updatedAt;
 }

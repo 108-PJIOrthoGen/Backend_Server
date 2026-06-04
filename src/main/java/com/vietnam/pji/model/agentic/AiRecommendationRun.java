@@ -63,4 +63,13 @@ public class AiRecommendationRun extends AbstractEntity<Long> implements Seriali
 
     @Column(name = "created_by_user_id")
     private Long createdByUserId;
+
+    /**
+     * True once the doctor has saved this run's completeness gaps as pending
+     * lab tasks. Drives the disabled state of the "Lưu nhắc nhở" button so it
+     * survives reloads and follows the user across devices.
+     */
+    @Builder.Default
+    @Column(name = "pending_tasks_saved", nullable = false)
+    private boolean pendingTasksSaved = false;
 }

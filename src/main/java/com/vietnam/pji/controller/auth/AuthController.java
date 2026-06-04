@@ -1,5 +1,6 @@
 package com.vietnam.pji.controller.auth;
 
+import com.vietnam.pji.dto.request.ChangePasswordRequestDTO;
 import com.vietnam.pji.dto.request.ForgotPasswordRequestDTO;
 import com.vietnam.pji.dto.request.LoginDTO;
 import com.vietnam.pji.dto.request.ResetPasswordRequestDTO;
@@ -217,8 +218,9 @@ public class AuthController {
         return new ResponseData<>(HttpStatus.OK.value(), "Fetch account successfully", info);
     }
 
-    @Operation(summary = "Update own profile", description = "Self-service update of the authenticated user's name, phone, department, avatar, "
-            + "and password. Role, status, and email are intentionally not editable through this endpoint.")
+    @Operation(summary = "Update own profile", description = "Self-service update of the authenticated user's name, phone, department, and avatar. "
+            + "Role, status, email, and password are intentionally not editable through this endpoint — "
+            + "password changes go through POST /auth/change-password.")
     @PutMapping("/auth/account")
     public ResponseData<ResLoginDTO.UserData> updateOwnProfile(@Valid @RequestBody UpdateOwnProfileRequestDTO data) {
         String emailLogin = SecurityUtils.getCurrentUserLogin().orElseThrow(
@@ -233,6 +235,30 @@ public class AuthController {
         payload.setDepartment(updated.getDepartment());
         payload.setAvatar(updated.getAvatar());
         return new ResponseData<>(HttpStatus.OK.value(), "Cập nhật thông tin tài khoản thành công", payload);
+    }
+
+    @Operation(summary = "Change own password", description = "Self-service password change. Requires the current password; "
+            + "on success every session is revoked (refresh token + active session) and the user must log in again.")
+    @PostMapping("/auth/change-password")
+    public ResponseEntity<ResponseData<Void>> changeOwnPassword(@Valid @RequestBody ChangePasswordRequestDTO data) {
+        String emailLogin = SecurityUtils.getCurrentUserLogin().orElseThrow(
+                () -> new InvalidDataException("Phiên đăng nhập không hợp lệ."));
+        userService.changeOwnPassword(emailLogin, data);
+        this.RedisService.deleteActiveSession(emailLogin);
+
+        // Xoá cookie refresh-token như logout — client phải đăng nhập lại.
+        ResponseCookie removeRefresh = ResponseCookie
+                .from(REFRESH_TOKEN_COOKIE, "")
+                .httpOnly(true)
+                .secure(secureCookie)
+                .sameSite(sameSite)
+                .path("/")
+                .maxAge(0)
+                .build();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, removeRefresh.toString())
+                .body(new ResponseData<>(HttpStatus.OK.value(),
+                        "Đổi mật khẩu thành công. Vui lòng đăng nhập lại."));
     }
 
     @Operation(summary = "Refresh access token", description = "Exchanges the refresh-token cookie for a new access token and rotates the refresh cookie")

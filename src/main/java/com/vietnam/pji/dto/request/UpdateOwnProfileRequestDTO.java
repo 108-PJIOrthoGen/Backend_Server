@@ -2,15 +2,15 @@ package com.vietnam.pji.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
 /**
  * Self-service profile-update payload. Intentionally excludes role, status,
  * and email — those remain admin-only edits via PUT /update-user. Password
- * change is optional; when {@code newPassword} is provided, {@code currentPassword}
- * must match the stored hash.
+ * changes are handled separately by POST /auth/change-password
+ * ({@link ChangePasswordRequestDTO}) so they can require the current
+ * password and revoke existing sessions.
  */
 @Getter
 @Setter
@@ -24,9 +24,4 @@ public class UpdateOwnProfileRequestDTO {
     private String department;
 
     private String avatar;
-
-    private String currentPassword;
-
-    @Size(min = 8, message = "Mật khẩu mới phải có ít nhất 8 ký tự")
-    private String newPassword;
 }
