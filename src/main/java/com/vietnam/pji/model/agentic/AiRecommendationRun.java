@@ -7,10 +7,11 @@ import com.vietnam.pji.model.AbstractEntity;
 import com.vietnam.pji.model.medical.PjiEpisode;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.util.Map;
+
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
-
-import java.io.Serializable;
 
 @Getter
 @Setter
@@ -19,7 +20,7 @@ import java.io.Serializable;
 @AllArgsConstructor
 @Entity
 @Table(name = "ai_recommendation_runs")
-public class AiRecommendationRun extends AbstractEntity<Long> implements Serializable {
+public class AiRecommendationRun extends AbstractEntity<Long> {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "episode_id", nullable = false)
@@ -59,7 +60,7 @@ public class AiRecommendationRun extends AbstractEntity<Long> implements Seriali
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "data_completeness_json", columnDefinition = "jsonb")
-    private java.util.Map<String, Object> dataCompletenessJson;
+    private Map<String, Object> dataCompletenessJson;
 
     @Column(name = "created_by_user_id")
     private Long createdByUserId;

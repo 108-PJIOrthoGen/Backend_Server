@@ -12,4 +12,11 @@ public interface DoctorRecommendationReviewService {
     DoctorRecommendationReview getReviewByRunId(Long runId);
 
     List<DoctorRecommendationReview> getReviewsByEpisodeId(Long episodeId);
+
+    /**
+     * Aggregate AI-vs-doctor consensus statistics: status counts, consensus
+     * rate, average per-criterion agreement, and the cases where the doctor
+     * overrode the AI.
+     */
+    com.vietnam.pji.dto.response.DoctorReviewStatsDTO getReviewStats();
 }
