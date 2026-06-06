@@ -50,4 +50,13 @@ public class DoctorRecommendationReviewController {
                 "Fetch reviews successfully",
                 reviewService.getReviewsByEpisodeId(episodeId));
     }
+
+    @GetMapping("/doctor-reviews/stats")
+    @Operation(summary = "AI-vs-doctor consensus statistics",
+            description = "Status counts, consensus rate, average per-criterion agreement, and cases where the doctor overrode the AI")
+    public ResponseData<com.vietnam.pji.dto.response.DoctorReviewStatsDTO> getReviewStats() {
+        return new ResponseData<>(HttpStatus.OK.value(),
+                "Fetch review stats successfully",
+                reviewService.getReviewStats());
+    }
 }

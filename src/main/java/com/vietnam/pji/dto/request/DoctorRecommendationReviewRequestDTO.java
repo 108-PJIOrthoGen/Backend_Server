@@ -22,4 +22,10 @@ public class DoctorRecommendationReviewRequestDTO {
     private Map<String, Object> modificationJson;
 
     private String rejectionReason;
+
+    /** Doctor's own final diagnosis (Chẩn đoán bác sĩ step). */
+    private Map<String, Object> doctorDiagnosisJson;
+
+    /** Per-criterion AI-vs-doctor agreement + overall agreement_rate (0-100). */
+    private Map<String, Object> agreementJson;
 }

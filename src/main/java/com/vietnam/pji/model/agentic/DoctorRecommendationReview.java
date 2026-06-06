@@ -44,4 +44,23 @@ public class DoctorRecommendationReview extends AbstractEntity<Long> {
     @Column(name = "rejection_reason", columnDefinition = "TEXT")
     private String rejectionReason;
 
+    /**
+     * The doctor's own final diagnosis captured in the "Chẩn đoán bác sĩ" step:
+     * {pji_conclusion, infection_classification, primary_diagnosis,
+     * clinical_reasoning, identified_organism}.
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "doctor_diagnosis_json", columnDefinition = "jsonb")
+    private Map<String, Object> doctorDiagnosisJson;
+
+    /**
+     * Per-criterion AI-vs-doctor agreement (booleans) plus an overall
+     * agreement_rate (0-100), computed at save time. Drives the comparison
+     * table, consensus statistics, and future model learning from the
+     * doctor's final word.
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "agreement_json", columnDefinition = "jsonb")
+    private Map<String, Object> agreementJson;
+
 }
